@@ -10,6 +10,8 @@ import gc
 
 trimap_kernel = [val for val in range(20,40)]
 g_mean = np.array(([126.88,120.24,112.19])).reshape([1,1,3])
+image_height = 480
+image_width = 480
 
 hard_samples = [
 1,4,8,11,13,15,16,19,28,42,43,44,46,65,68,69,70,81,91,92,94,101,104,
@@ -79,10 +81,10 @@ def load_path(alphas, trimaps, RGBs):
     '''
     class_folders = os.listdir(trimaps)
     alphas_abspath = []
-    tripmas_abspath = []
+    trimaps_abspath = []
     RGBs_abspath = []
     for class_folder in class_folders:
-        object_folder = os.listdir(os.path.join(trimaps, class_folder))
+        object_folders = os.listdir(os.path.join(trimaps, class_folder))
         for object_folder in object_folders:
             masks = os.listdir(os.path.join(trimaps, class_folder, object_folder))
             for mask in masks:
@@ -93,7 +95,7 @@ def load_path(alphas, trimaps, RGBs):
                     trimaps_abspath.append(trimap)
                     alphas_abspath.append(alpha)
                     RGBs_abspath.append(RGB)
-    return np.array(alphas_abspath),np.array(trimaps_abspath),np.array(RGbS_ABSPATH)
+    return np.array(alphas_abspath),np.array(trimaps_abspath),np.array(RGBs_abspath)
 
 def load_data(batch_alpha_paths,batch_trimap_paths,batch_rgb_paths):
 	
@@ -103,10 +105,11 @@ def load_data(batch_alpha_paths,batch_trimap_paths,batch_rgb_paths):
 	for i in range(batch_size):
 			
 		alpha = misc.imread(batch_alpha_paths[i],'L').astype(np.float32)
-
+                alpha = misc.imresize(alpha, (image_width, image_height))
 		trimap = misc.imread(batch_trimap_paths[i], 'P').astype(np.float32)
-
+                trimap = misc.imresize(trimap, (image_width, image_height))
 		rgb = misc.imread(batch_rgb_paths[i]).astype(np.float32)
+                rgb = misc.imresize(rgb, (image_width, image_height))
                 
                 alpha = np.expand_dims(alpha,2)
                 trimap = np.expand_dims(trimap,2)
@@ -119,7 +122,7 @@ def load_data(batch_alpha_paths,batch_trimap_paths,batch_rgb_paths):
 
 		train_batch.append(batch_i)
 	train_batch = np.stack(train_batch)
-        return np.expand_dims(train_batch[:,:,:,0],3),np.expand_dims(train_batch[:,:,:,1],3),train_batch[:,:,:,2:5], train_batch[:,:,:,5:], rgb
+        return np.expand_dims(train_batch[:,:,:,0],3),np.expand_dims(train_batch[:,:,:,1],3),train_batch[:,:,:,2:5], train_batch[:,:,:,5:], np.expand_dims(rgb,0)
 
 def generate_trimap(trimap,alpha):
 

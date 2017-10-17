@@ -1,11 +1,12 @@
-
 import tensorflow as tf
+import gpumemory
 import numpy as np
 from matting import load_path,load_data,load_alphamatting_data,load_validation_data,unpool
 import os
 from scipy import misc
 
-image_size = 320
+image_height = 480
+image_width = 480
 train_batch_size = 1
 max_epochs = 1000000
 hard_mode = False
@@ -13,17 +14,17 @@ hard_mode = False
 #checkpoint file path
 #pretrained_model = './model/model.ckpt'
 pretrained_model = False
-test_dir = './alhpamatting'
-test_outdir = './test_predict'
-validation_dir = '/data/gezheng/data-matting/new2/validation'
+#test_dir = './alhpamatting'
+#test_outdir = './test_predict'
+#validation_dir = '/data/gezheng/data-matting/new2/validation'
 
 #pretrained_vgg_model_path
-model_path = './vgg16_weights.npz'
-log_dir = '/data/gezheng/matting_log'
+model_path = '/home/wangxiny/Segmentation-Refinement/vgg16_weights.npz'
+log_dir = './matting_log'
 
-dataset_alpha = '/data/gezheng/data-matting/new2/alpha1280'
-dataset_eps = '/data/gezheng/data-matting/new2/eps1280'
-dataset_BG = '/data/gezheng/data-matting/new2/BG'
+dataset_alpha = '/media/wenxuan/LargeDisk/wangxiny/DAVIS/Alphas'
+dataset_trimap = '/media/wenxuan/LargeDisk/wangxiny/DAVIS/SegPredictions'
+dataset_RGB = '/media/wenxuan/LargeDisk/wangxiny/DAVIS/JPEGImages/480p'
 
 paths_alpha,paths_trimap,paths_RGB = load_path(dataset_alpha,dataset_trimap,dataset_RGB)
 
@@ -35,12 +36,12 @@ batchs_per_epoch = int(range_size/train_batch_size)
 index_queue = tf.train.range_input_producer(range_size, num_epochs=None,shuffle=True, seed=None, capacity=32)
 index_dequeue_op = index_queue.dequeue_many(train_batch_size, 'index_dequeue')
 
-image_batch = tf.placeholder(tf.float32, shape=(train_batch_size,image_size,image_size,3))
-raw_RGBs = tf.placeholder(tf.float32, shape=(train_batch_size,image_size,image_size,3))
-GT_matte_batch = tf.placeholder(tf.float32, shape = (train_batch_size,image_size,image_size,1))
-GT_trimap = tf.placeholder(tf.float32, shape = (train_batch_size,image_size,image_size,1))
-GTBG_batch = tf.placeholder(tf.float32, shape = (train_batch_size,image_size,image_size,3))
-GTFG_batch = tf.placeholder(tf.float32, shape = (train_batch_size,image_size,image_size,3))
+image_batch = tf.placeholder(tf.float32, shape=(train_batch_size,image_height,image_width,3))
+raw_RGBs = tf.placeholder(tf.float32, shape=(train_batch_size,image_height,image_width,3))
+GT_matte_batch = tf.placeholder(tf.float32, shape = (train_batch_size,image_height,image_width,1))
+GT_trimap = tf.placeholder(tf.float32, shape = (train_batch_size,image_height,image_width,1))
+GTBG_batch = tf.placeholder(tf.float32, shape = (train_batch_size,image_height,image_width,3))
+GTFG_batch = tf.placeholder(tf.float32, shape = (train_batch_size,image_height,image_width,3))
 
 
 tf.add_to_collection('image_batch',image_batch)
@@ -55,9 +56,9 @@ b_GTmatte = tf.identity(GT_matte_batch,name = 'b_GTmatte')
 b_GTBG = tf.identity(GTBG_batch,name = 'b_GTBG')
 b_GTFG = tf.identity(GTFG_batch,name = 'b_GTFG')
 
-tf.summary.image('GT_matte_batch',b_GTmatte,max_outputs = 5)
-tf.summary.image('trimap',b_trimap,max_outputs = 5)
-tf.summary.image('raw_RGBs',raw_RGBs,max_outputs = 5)
+tf.summary.image('GT_matte_batch',b_GTmatte,max_outputs = 1)
+tf.summary.image('trimap',b_trimap,max_outputs = 1)
+tf.summary.image('raw_RGBs',raw_RGBs,max_outputs = 1)
 
 b_input = tf.concat([b_RGB,b_trimap],3)
 
@@ -364,17 +365,17 @@ with tf.variable_scope('pred_alpha') as scope:
 
 tf.add_to_collection("pred_mattes", pred_mattes)
 
-wl = tf.where(tf.equal(b_trimap,128), tf.fill([train_batch_size,image_size,image_size,1],1.), tf.fill([train_batch_size,image_size,image_size,1], 0.5))
+wl = tf.where(tf.equal(b_trimap,128), tf.fill([train_batch_size,image_width,image_height,1],1.), tf.fill([train_batch_size,image_width,image_height,1], 0.5))
 
-tf.summary.image('pred_mattes',pred_mattes,max_outputs = 5)
-alpha_diff = tf.sqrt(tf.square(pred_mattes - GT_matte_batch)+ 1e-12)
+tf.summary.image('pred_mattes',pred_mattes,max_outputs = 1)
+alpha_diff = tf.sqrt(tf.square(pred_mattes - GT_matte_batch) / 255.0 + 1e-12)
 
 p_RGB = []
-pred_mattes.set_shape([train_batch_size,image_size,image_size,1])
-b_GTBG.set_shape([train_batch_size,image_size,image_size,3])
-b_GTFG.set_shape([train_batch_size,image_size,image_size,3])
-raw_RGBs.set_shape([train_batch_size,image_size,image_size,3])
-b_GTmatte.set_shape([train_batch_size,image_size,image_size,1])
+pred_mattes.set_shape([train_batch_size,image_height,image_width,1])
+b_GTBG.set_shape([train_batch_size,image_height,image_width,3])
+b_GTFG.set_shape([train_batch_size,image_height,image_width,3])
+raw_RGBs.set_shape([train_batch_size,image_height,image_width,3])
+b_GTmatte.set_shape([train_batch_size,image_height,image_width,1])
 
 # pred_final =  tf.where(tf.equal(b_trimap,128), pred_mattes, b_trimap/255.0)
 # tf.summary.image('pred_final',pred_final,max_outputs = 5)
@@ -384,10 +385,10 @@ BG = tf.unstack(b_GTBG)
 FG = tf.unstack(b_GTFG)
 
 for i in range(train_batch_size):
-    p_RGB.append(l_matte[i] * FG[i] + (tf.constant(1.) - l_matte[i]) * BG[i])
+    p_RGB.append(l_matte[i] / 255.0 * FG[i] + (tf.constant(1.) - l_matte[i] / 255.0) * BG[i])
 pred_RGB = tf.stack(p_RGB)
 
-tf.summary.image('pred_RGB', pred_RGB, max_outputs = 5)
+tf.summary.image('pred_RGB', pred_RGB, max_outputs = 1)
 #c_diff = tf.sqrt(tf.square(pred_RGB/255.0 - raw_RGBs/255.0) + 1e-12)
 # changed 201709
 # TODO figure out how to deal with this loss
@@ -447,42 +448,42 @@ with tf.Session(config=tf.ConfigProto(gpu_options = gpu_options)) as sess:
             batch_alpha_paths = paths_alpha[batch_index]
             batch_trimap_paths = paths_trimap[batch_index]
             batch_RGB_paths = paths_RGB[batch_index]
-            batch_alphas,batch_trimaps,batch_RGBs, batch_FGs RGBs_with_mean = load_data(batch_alpha_paths,batch_trimap_paths,batch_RGB_paths)
+            batch_alphas,batch_trimaps,batch_RGBs, batch_FGs, RGBs_with_mean = load_data(batch_alpha_paths,batch_trimap_paths,batch_RGB_paths)
 
             feed = {image_batch:batch_RGBs, GT_matte_batch:batch_alphas,GT_trimap:batch_trimaps, GTBG_batch:batch_RGBs, GTFG_batch:batch_FGs,raw_RGBs:RGBs_with_mean}
 
             _,loss,summary_str,step= sess.run([train_op,total_loss,summary_op,global_step],feed_dict = feed)
             print('loss is %f' %loss)
             
-            if step%200 == 0:
+            if step%5000 == 0:
                	saver.export_meta_graph('meta_graph/my-model.meta')
                 print('saving model......')
                 saver.save(sess,'./model/model.ckpt',global_step = step, write_meta_graph = False)
 
                 print('test on validation data...')
-                vali_diff = []
-                test_RGBs,test_trimaps,test_alphas,all_shape,image_paths = load_validation_data(validation_dir)
-                for i in range(len(test_RGBs)):
-                    test_RGB = np.expand_dims(test_RGBs[i],0)
-                    test_trimap = np.expand_dims(test_trimaps[i],0)
-                    test_alpha = test_alphas[i]
-                    shape_i = all_shape[i]
-                    image_path = image_paths[i]
-                    
-                    feed = {image_batch:test_RGB,GT_trimap:test_trimap}
-                    test_out = sess.run(pred_mattes,feed_dict = feed)
-                    
-                    i_out = misc.imresize(test_out[0,:,:,0],shape_i)
-                    vali_diff.append(np.sum(np.abs(i_out/255.0-test_alpha))/(shape_i[0]*shape_i[1]))
-                    misc.imsave(os.path.join(test_outdir,image_path),i_out)
-                
-                vali_loss = np.mean(vali_diff)
-                print('validation loss is '+ str(vali_loss))
-                validation_summary = tf.Summary()
-                validation_summary.value.add(tag='validation_loss',simple_value = vali_loss)
-                summary_writer.add_summary(validation_summary,step)
-
-            summary_writer.add_summary(summary_str,global_step = step)
+                #vali_diff = []
+                #test_RGBs,test_trimaps,test_alphas,all_shape,image_paths = load_validation_data(validation_dir)
+                #for i in range(len(test_RGBs)):
+                #    test_RGB = np.expand_dims(test_RGBs[i],0)
+                #    test_trimap = np.expand_dims(test_trimaps[i],0)
+                #    test_alpha = test_alphas[i]
+                #    shape_i = all_shape[i]
+                #    image_path = image_paths[i]
+                #    
+                #    feed = {image_batch:test_RGB,GT_trimap:test_trimap}
+                #    test_out = sess.run(pred_mattes,feed_dict = feed)
+                #    
+                #    i_out = misc.imresize(test_out[0,:,:,0],shape_i)
+                #    vali_diff.append(np.sum(np.abs(i_out/255.0-test_alpha))/(shape_i[0]*shape_i[1]))
+                #    misc.imsave(os.path.join(test_outdir,image_path),i_out)
+                #
+                #vali_loss = np.mean(vali_diff)
+                #print('validation loss is '+ str(vali_loss))
+                #validation_summary = tf.Summary()
+                #validation_summary.value.add(tag='validation_loss',simple_value = vali_loss)
+                #summary_writer.add_summary(validation_summary,step)
+            if step%50 == 0:
+                summary_writer.add_summary(summary_str,global_step = step)
             batch_num += 1
         batch_num = 0
         epoch_num += 1
