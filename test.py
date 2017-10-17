@@ -22,8 +22,8 @@ def main(args):
 		alpha = misc.imread(args.alpha,'L')
 		trimap = generate_trimap(np.expand_dims(np.copy(alpha),2),np.expand_dims(alpha,2))[:,:,0]
 		origin_shape = alpha.shape
-		rgb = np.expand_dims(misc.imresize(rgb.astype(np.uint8),[320,320,3]).astype(np.float32)-g_mean,0)
-		trimap = np.expand_dims(np.expand_dims(misc.imresize(trimap.astype(np.uint8),[320,320],interp = 'nearest').astype(np.float32),2),0)
+		rgb = np.expand_dims(misc.imresize(rgb.astype(np.uint8),[480,480,3]).astype(np.float32)-g_mean,0)
+		trimap = np.expand_dims(np.expand_dims(misc.imresize(trimap.astype(np.uint8),[480,480],interp = 'nearest').astype(np.float32),2),0)
 
 		feed_dict = {image_batch:rgb,GT_trimap:trimap}
 		pred_alpha = sess.run(pred_mattes,feed_dict = feed_dict)
