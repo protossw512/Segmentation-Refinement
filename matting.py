@@ -50,24 +50,50 @@ def UR_center(trimap):
     index = random.choice([i for i in range(len(target[0]))])
     return  np.array(target)[:,index][:2]
 
-def load_path(alpha,eps,BG,hard_mode = False):
-    folders = os.listdir(alpha)
-    common_paths = []
-    if hard_mode:
-        for folder in folders:
-            if int(folder) in hard_samples: 
-                images = os.listdir(os.path.join(alpha,folder))
-                common_paths.extend([os.path.join(folder,image) for image in images])
-    else:
-        for folder in folders:
-            #if int(folder)==137:
-            images = os.listdir(os.path.join(alpha,folder))
-            common_paths.extend([os.path.join(folder,image) for image in images])
-    print(common_paths)
-    alphas_abspath = [os.path.join(alpha,common_path) for common_path in common_paths]
-    epses_abspath = [os.path.join(eps,common_path) for common_path in common_paths]
-    BGs_abspath = [os.path.join(BG,common_path)[:-3] + 'jpg' for common_path in common_paths]
-    return np.array(alphas_abspath),np.array(epses_abspath),np.array(BGs_abspath)
+def load_path(alphas, trimaps, RGBs):
+    '''
+        rgb
+            bike
+                00001.jpg
+                00002.jpg
+                ...
+            bear
+            ...
+        annotation
+            bike
+                00001.png
+                00002.png
+            bear
+            ...
+        segmentation
+            bike
+                1
+                    00002.png
+                    00003.png
+                2
+                    00002.png
+                    00003.png
+                ...
+            ...
+
+    '''
+    class_folders = os.listdir(trimaps)
+    alphas_abspath = []
+    tripmas_abspath = []
+    RGBs_abspath = []
+    for class_folder in class_folders:
+        object_folder = os.listdir(os.path.join(trimaps, class_folder))
+        for object_folder in object_folders:
+            masks = os.listdir(os.path.join(trimaps, class_folder, object_folder))
+            for mask in masks:
+                trimap = os.path.join(trimaps, class_folder, object_folder, mask)
+                alpha = os.path.join(alphas, class_folder, object_folder, mask)
+                RGB = os.path.join(RGBs, class_folder, mask[:-4] + '.jpg')
+                if os.path.exists(alpha) and os.path.exists(RGB):
+                    trimaps_abspath.append(trimap)
+                    alphas_abspath.append(alpha)
+                    RGBs_abspath.append(RGB)
+    return np.array(alphas_abspath),np.array(trimaps_abspath),np.array(RGbS_ABSPATH)
 
 def load_data(batch_alpha_paths,batch_trimap_paths,batch_rgb_paths):
 	
