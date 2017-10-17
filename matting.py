@@ -79,10 +79,10 @@ def load_path(alphas, trimaps, RGBs):
     '''
     class_folders = os.listdir(trimaps)
     alphas_abspath = []
-    tripmas_abspath = []
+    trimaps_abspath = []
     RGBs_abspath = []
     for class_folder in class_folders:
-        object_folder = os.listdir(os.path.join(trimaps, class_folder))
+        object_folders = os.listdir(os.path.join(trimaps, class_folder))
         for object_folder in object_folders:
             masks = os.listdir(os.path.join(trimaps, class_folder, object_folder))
             for mask in masks:
@@ -93,7 +93,7 @@ def load_path(alphas, trimaps, RGBs):
                     trimaps_abspath.append(trimap)
                     alphas_abspath.append(alpha)
                     RGBs_abspath.append(RGB)
-    return np.array(alphas_abspath),np.array(trimaps_abspath),np.array(RGbS_ABSPATH)
+    return np.array(alphas_abspath),np.array(trimaps_abspath),np.array(RGBs_abspath)
 
 def load_data(batch_alpha_paths,batch_trimap_paths,batch_rgb_paths):
 	
