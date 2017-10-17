@@ -25,7 +25,7 @@ dataset_alpha = '/data/gezheng/data-matting/new2/alpha1280'
 dataset_eps = '/data/gezheng/data-matting/new2/eps1280'
 dataset_BG = '/data/gezheng/data-matting/new2/BG'
 
-paths_alpha,paths_trimap,paths_RGB = load_path(dataset_alpha,dataset_trimap,dataset_RGB,hard_mode = hard_mode)
+paths_alpha,paths_trimap,paths_RGB = load_path(dataset_alpha,dataset_trimap,dataset_RGB)
 
 range_size = len(paths_alpha)
 print('range_size is %d' % range_size)
