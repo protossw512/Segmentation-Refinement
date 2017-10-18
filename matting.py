@@ -116,13 +116,13 @@ def load_data(batch_alpha_paths,batch_trimap_paths,batch_rgb_paths):
 		
                 fg = rgb * np.concatenate([alpha, alpha, alpha], axis=2) / 255.0
 
-		batch_i = np.concatenate([alpha, trimap, rgb - g_mean, fg],2)
+		batch_i = np.concatenate([alpha, trimap, rgb - g_mean, fg, rgb],2)
 
                 batch_i = batch_i.astype(np.float32)
 
 		train_batch.append(batch_i)
 	train_batch = np.stack(train_batch)
-        return np.expand_dims(train_batch[:,:,:,0],3),np.expand_dims(train_batch[:,:,:,1],3),train_batch[:,:,:,2:5], train_batch[:,:,:,5:], np.expand_dims(rgb,0)
+        return np.expand_dims(train_batch[:,:,:,0],3),np.expand_dims(train_batch[:,:,:,1],3),train_batch[:,:,:,2:5], train_batch[:,:,:,5:8], train_batch[:,:,:,8:]
 
 def generate_trimap(trimap,alpha):
 
