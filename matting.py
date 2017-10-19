@@ -25,6 +25,67 @@ hard_samples = [
 877,885,889,892,894,895
 ]
 
+
+def image_preprocessing(image):
+    distored_image, _ = distorted_bounding_box_crop(image)
+    distored_image = tf.image.random_flip_left_right(distored_image)
+    distored_image = tf.image.resize_images(distored_image, [image_height, image_width])
+    return distored_image
+
+def distorted_bounding_box_crop(image,
+                                bbox=tf.constant([0.0,0.0,1.0,1.0], dtype=tf.float32, shape=[1,1,4]),
+                                min_object_covered=0.1,
+                                aspect_ratio_range=(0.75, 1.33),
+                                area_range=(0.25, 1.0),
+                                max_attempts=100,
+                                scope=None):
+  """Generates cropped_image using a one of the bboxes randomly distorted.
+  See `tf.image.sample_distorted_bounding_box` for more documentation.
+  Args:
+    image: 3-D Tensor of image (it will be converted to floats in [0, 1]).
+    bbox: 3-D float Tensor of bounding boxes arranged [1, num_boxes, coords]
+      where each coordinate is [0, 1) and the coordinates are arranged
+      as [ymin, xmin, ymax, xmax]. If num_boxes is 0 then it would use the whole
+      image.
+    min_object_covered: An optional `float`. Defaults to `0.1`. The cropped
+      area of the image must contain at least this fraction of any bounding box
+      supplied.
+    aspect_ratio_range: An optional list of `floats`. The cropped area of the
+      image must have an aspect ratio = width / height within this range.
+    area_range: An optional list of `floats`. The cropped area of the image
+      must contain a fraction of the supplied image within in this range.
+    max_attempts: An optional `int`. Number of attempts at generating a cropped
+      region of the image of the specified constraints. After `max_attempts`
+      failures, return the entire image.
+    scope: Optional scope for name_scope.
+  Returns:
+    A tuple, a 3-D Tensor cropped_image and the distorted bbox
+  """
+  with tf.name_scope(scope, 'distorted_bounding_box_crop', [image, bbox]):
+    # Each bounding box has shape [1, num_boxes, box coords] and
+    # the coordinates are ordered [ymin, xmin, ymax, xmax].
+
+    # A large fraction of image datasets contain a human-annotated bounding
+    # box delineating the region of the image containing the object of interest.
+    # We choose to create a new bounding box for the object which is a randomly
+    # distorted version of the human-annotated bounding box that obeys an
+    # allowed range of aspect ratios, sizes and overlap with the human-annotated
+    # bounding box. If no box is supplied, then we assume the bounding box is
+    # the entire image.
+    sample_distorted_bounding_box = tf.image.sample_distorted_bounding_box(
+        tf.shape(image),
+        bounding_boxes=bbox,
+        min_object_covered=min_object_covered,
+        aspect_ratio_range=aspect_ratio_range,
+        area_range=area_range,
+        max_attempts=max_attempts,
+        use_image_if_no_bounding_boxes=True)
+    bbox_begin, bbox_size, distort_bbox = sample_distorted_bounding_box
+
+    # Crop the image to the specified bounding box.
+    cropped_image = tf.slice(image, bbox_begin, bbox_size)
+    return cropped_image, distort_bbox
+
 def unpool(pool, ind, ksize=[1, 2, 2, 1], scope='unpool'):
     
 	with tf.variable_scope(scope):
@@ -104,26 +165,31 @@ def load_data(batch_alpha_paths,batch_trimap_paths,batch_rgb_paths):
 	images_without_mean_reduction = []
 	for i in range(batch_size):
 			
-		alpha = misc.imread(batch_alpha_paths[i],'L').astype(np.float32)
+		alpha = misc.imread(batch_alpha_paths[i],'L')
+		#alpha = misc.imread(batch_alpha_paths[i],'L').astype(np.float32)
                 alpha = misc.imresize(alpha, (image_width, image_height))
-		trimap = misc.imread(batch_trimap_paths[i], 'P').astype(np.float32)
+		trimap = misc.imread(batch_trimap_paths[i], 'P')
+		#trimap = misc.imread(batch_trimap_paths[i], 'P').astype(np.float32)
                 trimap = misc.imresize(trimap, (image_width, image_height))
-		rgb = misc.imread(batch_rgb_paths[i]).astype(np.float32)
+		rgb = misc.imread(batch_rgb_paths[i])
+		#rgb = misc.imread(batch_rgb_paths[i]).astype(np.float32)
                 rgb = misc.imresize(rgb, (image_width, image_height))
+                #misc.imsave('temp_alpha.png', alpha)
+                #misc.imsave('temp_trimap.png', trimap)
+                #misc.imsave('temp_rgb.png', rgb)
                 
                 alpha = np.expand_dims(alpha,2)
                 trimap = np.expand_dims(trimap,2)
 		
-                fg = rgb * np.concatenate([alpha, alpha, alpha], axis=2) / 255.0
-
+                fg = rgb.astype(np.float32) * np.concatenate([alpha.astype(np.float32), alpha.astype(np.float32), alpha.astype(np.float32)], axis=2) / 255.0
 		batch_i = np.concatenate([alpha, trimap, rgb - g_mean, fg, rgb],2)
 
                 batch_i = batch_i.astype(np.float32)
 
 		train_batch.append(batch_i)
 	train_batch = np.stack(train_batch)
-        return np.expand_dims(train_batch[:,:,:,0],3),np.expand_dims(train_batch[:,:,:,1],3),train_batch[:,:,:,2:5], train_batch[:,:,:,5:8], train_batch[:,:,:,8:]
-
+        #return np.expand_dims(train_batch[:,:,:,0],3),np.expand_dims(train_batch[:,:,:,1],3),train_batch[:,:,:,2:5], train_batch[:,:,:,5:8], train_batch[:,:,:,8:]
+        return train_batch
 def generate_trimap(trimap,alpha):
 
 	k_size = random.choice(trimap_kernel)
