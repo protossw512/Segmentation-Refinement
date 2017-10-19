@@ -182,7 +182,70 @@ def load_data(batch_alpha_paths,batch_trimap_paths,batch_rgb_paths):
                 trimap = np.expand_dims(trimap,2)
 		
                 fg = rgb.astype(np.float32) * np.concatenate([alpha.astype(np.float32), alpha.astype(np.float32), alpha.astype(np.float32)], axis=2) / 255.0
-		batch_i = np.concatenate([alpha, trimap, rgb - g_mean, fg, rgb],2)
+		batch_i = np.concatenate([alpha, trimap, rgb - g_mean, fg, rgb-fg, rgb],2)
+
+                batch_i = batch_i.astype(np.float32)
+
+		train_batch.append(batch_i)
+	train_batch = np.stack(train_batch)
+        #return np.expand_dims(train_batch[:,:,:,0],3),np.expand_dims(train_batch[:,:,:,1],3),train_batch[:,:,:,2:5], train_batch[:,:,:,5:8], train_batch[:,:,:,8:]
+        return train_batch
+
+def load_path_adobe(alphas,FGs, BGs, RGBs):
+    '''
+        rgb:
+            0001.png
+            ...
+        fg:
+            0001.png
+            ...
+        bg:
+            0001.png
+            ...
+        alpha:
+            0001.png
+    '''
+    image_names = os.listdir(alphas)
+    alphas_abspath = []
+    FGs_abspath = []
+    BGs_abspath = []
+    RGBs_abspath = []
+    for image_name in image_names:
+        alpha_path = os.path.join(alphas, image_name)
+        FG_path = os.path.join(FGs, image_name)
+        BG_path = os.path.join(BGs, image_name)
+        RGB_path = os.path.join(RGBs, image_name)
+        alphas_abspath.append(alpha_path)
+        FGs_abspath.append(FG_path)
+        BGs_abspath.append(BG_path)
+        RGBs_abspath.append(RGB_path)
+    return np.array(alphas_abspath),np.array(FGs_abspath),np.array(BGs_abspath),np.array(RGBs_abspath)
+
+def load_data_adobe(batch_alpha_paths,
+                    batch_FG_paths,
+                    batch_BG_paths,
+                    batch_RGB_paths):
+	
+	batch_size = batch_alpha_paths.shape[0]
+	train_batch = []
+	images_without_mean_reduction = []
+	for i in range(batch_size):
+			
+		alpha = misc.imread(batch_alpha_paths[i],'L')
+                alpha = misc.imresize(alpha, (image_width, image_height))
+                alpha = np.expand_dims(alpha,2)
+		
+                trimap = np.copy(alpha)
+                trimap = generate_trimap(trimap, alpha)
+
+                rgb = misc.imread(batch_RGB_paths[i])
+                rgb = misc.imresize(rgb, (image_width, image_height))
+                
+                fg = misc.imread(batch_FG_paths[i])
+                fg = misc.imresize(fg, (image_width, image_height))
+                bg = misc.imread(batch_BG_paths[i])
+                bg = misc.imresize(bg, (image_width, image_height))
+		batch_i = np.concatenate([alpha, trimap, rgb - g_mean, fg, bg, rgb],2)
 
                 batch_i = batch_i.astype(np.float32)
 

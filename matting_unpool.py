@@ -1,7 +1,7 @@
 import tensorflow as tf
 import gpumemory
 import numpy as np
-from matting import image_preprocessing,load_path,load_data,load_alphamatting_data,load_validation_data,unpool
+from matting import image_preprocessing,load_path,load_data,load_path_adobe,load_data_adobe,load_alphamatting_data,load_validation_data,unpool
 import os
 from scipy import misc
 
@@ -20,6 +20,8 @@ flags.DEFINE_integer('image_height', 320, 'input image height')
 flags.DEFINE_integer('image_width', 320, 'input image width')
 flags.DEFINE_integer('max_epochs', 500, 'max epochs to run' )
 flags.DEFINE_integer('batch_size', 1, 'batch_size for training')
+flags.DEFINE_integer('save_log_steps', 50, 'save log after steps')
+flags.DEFINE_integer('save_ckpt_steps', 5000, 'save ckpt after steps')
 flags.DEFINE_float('learning_rate', 0.0004, 'initial learning rate')
 flags.DEFINE_float('learning_rate_decay', 0.95, 'learning rate decay factor')
 flags.DEFINE_float('learning_rate_decay_steps', 100, 'learning rate decay after epochs')
@@ -53,9 +55,7 @@ def main(_):
     if FLAGS.dataset_name == 'DAVIS':
         paths_alpha,paths_trimap,paths_RGB = load_path(dataset_alpha,dataset_trimap,dataset_RGB)
     else:
-        pass
-        #TODO
-        #paths_alpha, paths_fg, paths_bg, paths_RGB = load_path_adobe(dataset_alpha, dataset_fg, dataset_bg, dataset_RGB)
+        paths_alpha, paths_FG, paths_BG, paths_RGB = load_path_adobe(dataset_alpha, dataset_fg, dataset_bg, dataset_RGB)
 
     range_size = len(paths_alpha)
     print('range_size is %d' % range_size)
@@ -65,16 +65,8 @@ def main(_):
     index_queue = tf.train.range_input_producer(range_size, num_epochs=None,shuffle=True, seed=None, capacity=32)
     index_dequeue_op = index_queue.dequeue_many(train_batch_size, 'index_dequeue')
 
-    #image_batch = tf.placeholder(tf.float32, shape=(train_batch_size,image_height,image_width,3))
-    #raw_RGBs = tf.placeholder(tf.float32, shape=(train_batch_size,image_height,image_width,3))
-    #GT_matte_batch = tf.placeholder(tf.float32, shape = (train_batch_size,image_height,image_width,1))
-    #GT_trimap = tf.placeholder(tf.float32, shape = (train_batch_size,image_height,image_width,1))
-    #GTBG_batch = tf.placeholder(tf.float32, shape = (train_batch_size,image_height,image_width,3))
-    #GTFG_batch = tf.placeholder(tf.float32, shape = (train_batch_size,image_height,image_width,3))
-    train_batch = tf.placeholder(tf.float32, shape=(train_batch_size, image_height, image_width, 11))
+    train_batch = tf.placeholder(tf.float32, shape=(train_batch_size, image_height, image_width, 14))
 
-    #tf.add_to_collection('image_batch',image_batch)
-    #tf.add_to_collection('GT_trimap',GT_trimap)
     tf.add_to_collection('train_batch', train_batch)
 
     images = tf.map_fn(lambda img: image_preprocessing(img), train_batch)
@@ -82,13 +74,7 @@ def main(_):
     en_parameters = []
     pool_parameters = []
     
-    b_GTmatte, b_trimap, b_RGB, b_GTFG, raw_RGBs = tf.split(images, [1, 1, 3, 3, 3], 3)
-    b_GTBG = tf.subtract(raw_RGBs, b_GTFG) 
-    #b_RGB = tf.identity(train_batch[:,:,:,2:5],name = 'b_RGB')
-    #b_trimap = tf.identity(train_batch[:,:,:,],name = 'b_trimap')
-    #b_GTmatte = tf.identity(GT_matte_batch,name = 'b_GTmatte')
-    #b_GTBG = tf.identity(GTBG_batch,name = 'b_GTBG')
-    #b_GTFG = tf.identity(GTFG_batch,name = 'b_GTFG')
+    b_GTmatte, b_trimap, b_RGB, b_GTFG, b_GTBG, raw_RGBs = tf.split(images, [1, 1, 3, 3, 3, 3], 3)
 
     tf.summary.image('GT_matte_batch',b_GTmatte,max_outputs = 4)
     tf.summary.image('trimap',b_trimap,max_outputs = 4)
@@ -399,8 +385,11 @@ def main(_):
 
     tf.add_to_collection("pred_mattes", pred_mattes)
 
-    #wl = tf.where(tf.equal(b_trimap,128), tf.fill([train_batch_size,image_width,image_height,1],1.), tf.fill([train_batch_size,image_width,image_height,1], 0.5))
-    wl = tf.ones_like(b_trimap)
+    
+    if FLAGS.dataset_name == 'DAVIS':
+        wl = tf.ones_like(b_trimap)
+    else:
+        wl = tf.where(tf.equal(b_trimap,128), tf.fill([train_batch_size,image_width,image_height,1],1.), tf.fill([train_batch_size,image_width,image_height,1], 0.5))
     tf.summary.image('pred_mattes',pred_mattes,max_outputs = 4)
     tf.summary.image('wl',wl,max_outputs = 4)
     #alpha_diff = tf.sqrt(tf.square(pred_mattes/255.0 - b_GTmatte/255.0,)  + 1e-12)
@@ -427,7 +416,6 @@ def main(_):
         p_RGB.append(l_matte[i] * FG[i] +  (tf.constant(1.) - l_matte[i]) * BG[i])
         #p_RGB.append(l_matte[i] / 255.0 * FG[i] + (tf.constant(1.) - l_matte[i] / 255.0) * BG[i])
     pred_RGB = tf.stack(p_RGB)
-    tf.summary.image('l_matte', l_matte, max_outputs = 4)
     tf.summary.image('pred_RGB', pred_RGB, max_outputs = 4)
     tf.summary.image('GTFG', b_GTFG, max_outputs = 4)
     tf.summary.image('GTBG', b_GTBG, max_outputs = 4)
@@ -496,19 +484,23 @@ def main(_):
                 print('batch %d, loading batch data...' % batch_num)
                 batch_index = sess.run(index_dequeue_op)
 
-                batch_alpha_paths = paths_alpha[batch_index]
-                batch_trimap_paths = paths_trimap[batch_index]
-                batch_RGB_paths = paths_RGB[batch_index]
-                #batch_alphas,batch_trimaps,batch_RGBs, batch_FGs, RGBs_with_mean = load_data(batch_alpha_paths,batch_trimap_paths,batch_RGB_paths)
-                images_batch = load_data(batch_alpha_paths,batch_trimap_paths,batch_RGB_paths)
-
-                #feed = {image_batch:batch_RGBs, GT_matte_batch:batch_alphas,GT_trimap:batch_trimaps, GTBG_batch:RGBs_with_mean - batch_FGs, GTFG_batch:batch_FGs,raw_RGBs:RGBs_with_mean}
+                if FLAGS.dataset_name == 'DAVIS':
+                    batch_alpha_paths = paths_alpha[batch_index]
+                    batch_trimap_paths = paths_trimap[batch_index]
+                    batch_RGB_paths = paths_RGB[batch_index]
+                    images_batch = load_data(batch_alpha_paths,batch_trimap_paths,batch_RGB_paths)
+                else:
+                    batch_alpha_paths = paths_alpha[batch_index]
+                    batch_FG_paths = paths_FG[batch_index]
+                    batch_BG_paths = paths_BG[batch_index]
+                    batch_RGB_paths = paths_RGB[batch_index]
+                    images_batch = load_data_adobe(batch_alpha_paths,batch_FG_paths,batch_BG_paths,batch_RGB_paths)
                 feed = {train_batch:images_batch}
 
                 _,loss,summary_str,step= sess.run([train_op,total_loss,summary_op,global_step],feed_dict = feed)
-                print('loss is %f' %loss)
+                print('global_step: %d, loss is %f' %(step, loss))
                 
-                if step%5000 == 0:
+                if step%FLAGS.save_ckpt_steps == 0:
                     saver.export_meta_graph(FLAGS.save_meta_path)
                     print('saving model......')
                     saver.save(sess,FLAGS.save_ckpt_path + '/model.ckpt',global_step = step, write_meta_graph = True)
@@ -535,7 +527,7 @@ def main(_):
                     #validation_summary = tf.Summary()
                     #validation_summary.value.add(tag='validation_loss',simple_value = vali_loss)
                     #summary_writer.add_summary(validation_summary,step)
-                if step%5 == 0:
+                if step%FLAGS.save_log_steps == 0:
                     summary_writer.add_summary(summary_str,global_step = step)
                 batch_num += 1
             batch_num = 0
