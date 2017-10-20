@@ -166,17 +166,14 @@ def load_data(batch_alpha_paths,batch_trimap_paths,batch_rgb_paths):
 	for i in range(batch_size):
 			
 		alpha = misc.imread(batch_alpha_paths[i],'L')
-		#alpha = misc.imread(batch_alpha_paths[i],'L').astype(np.float32)
-                alpha = misc.imresize(alpha, (image_width, image_height))
+                if not (alpha.shape[0] == image_height and alpha.shape[1] == image_width):
+                    alpha = misc.imresize(alpha, (image_height, image_width))
 		trimap = misc.imread(batch_trimap_paths[i], 'P')
-		#trimap = misc.imread(batch_trimap_paths[i], 'P').astype(np.float32)
-                trimap = misc.imresize(trimap, (image_width, image_height))
+                if not (trimap.shape[0] == image_height and trimap.shape[1] == image_width):
+                    trimap = misc.imresize(trimap, (image_height, image_width))
 		rgb = misc.imread(batch_rgb_paths[i])
-		#rgb = misc.imread(batch_rgb_paths[i]).astype(np.float32)
-                rgb = misc.imresize(rgb, (image_width, image_height))
-                #misc.imsave('temp_alpha.png', alpha)
-                #misc.imsave('temp_trimap.png', trimap)
-                #misc.imsave('temp_rgb.png', rgb)
+                if not (rgb.shape[0] == image_height and rgb.shape[1] == image_width):
+                    rgb = misc.imresize(rgb, (image_height, image_width))
                 
                 alpha = np.expand_dims(alpha,2)
                 trimap = np.expand_dims(trimap,2)
@@ -232,19 +229,25 @@ def load_data_adobe(batch_alpha_paths,
 	for i in range(batch_size):
 			
 		alpha = misc.imread(batch_alpha_paths[i],'L')
-                alpha = misc.imresize(alpha, (image_width, image_height))
+                if not (alpha.shape[0] == image_height and alpha.shape[1] == image_width):
+                    alpha = misc.imresize(alpha, (image_width, image_height))
                 alpha = np.expand_dims(alpha,2)
 		
                 trimap = np.copy(alpha)
                 trimap = generate_trimap(trimap, alpha)
 
                 rgb = misc.imread(batch_RGB_paths[i])
-                rgb = misc.imresize(rgb, (image_width, image_height))
+                if not (rgb.shape[0] == image_height and rgb.shape[1] == image_width):
+                    rgb = misc.imresize(rgb, (image_width, image_height))
                 
                 fg = misc.imread(batch_FG_paths[i])
-                fg = misc.imresize(fg, (image_width, image_height))
+                if not (fg.shape[0] == image_height and fg.shape[1] == image_width):
+                    fg = misc.imresize(fg, (image_width, image_height))
+
                 bg = misc.imread(batch_BG_paths[i])
-                bg = misc.imresize(bg, (image_width, image_height))
+                if not (bg.shape[0] == image_height and bg.shape[1] == image_width):
+                    bg = misc.imresize(bg, (image_width, image_height))
+
 		batch_i = np.concatenate([alpha, trimap, rgb - g_mean, fg, bg, rgb],2)
 
                 batch_i = batch_i.astype(np.float32)
@@ -256,8 +259,10 @@ def load_data_adobe(batch_alpha_paths,
 def generate_trimap(trimap,alpha):
 
 	k_size = random.choice(trimap_kernel)
+        dilate = ndimage.grey_dilation(alpha[:,:,0],size=(k_size,k_size))
+        erode = ndimage.grey_erosion(alpha[:,:,0],size=(k_size,k_size))
 	# trimap[np.where((ndimage.grey_dilation(alpha[:,:,0],size=(k_size,k_size)) - ndimage.grey_erosion(alpha[:,:,0],size=(k_size,k_size)))!=0)] = 128
-	trimap[np.where((ndimage.grey_dilation(alpha[:,:,0],size=(k_size,k_size)) - alpha[:,:,0]!=0))] = 128
+	trimap[np.where(dilate - erode)] = 128
 	return trimap
 
 def preprocessing_single(alpha, trimap, rgb,name, image_height=480, image_width=854):

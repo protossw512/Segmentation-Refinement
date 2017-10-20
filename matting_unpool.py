@@ -4,6 +4,7 @@ import numpy as np
 from matting import image_preprocessing,load_path,load_data,load_path_adobe,load_data_adobe,load_alphamatting_data,load_validation_data,unpool
 import os
 from scipy import misc
+import timeit
 
 flags = tf.app.flags
 flags.DEFINE_string('alpha_path', None, 'Path to alpha files')
@@ -389,7 +390,7 @@ def main(_):
     if FLAGS.dataset_name == 'DAVIS':
         wl = tf.ones_like(b_trimap)
     else:
-        wl = tf.where(tf.equal(b_trimap,128), tf.fill([train_batch_size,image_width,image_height,1],1.), tf.fill([train_batch_size,image_width,image_height,1], 0.5))
+        wl = tf.where(tf.equal(b_trimap,128), tf.fill([train_batch_size,image_width,image_height,1],1.), tf.fill([train_batch_size,image_width,image_height,1], 0.))
     tf.summary.image('pred_mattes',pred_mattes,max_outputs = 4)
     tf.summary.image('wl',wl,max_outputs = 4)
     #alpha_diff = tf.sqrt(tf.square(pred_mattes/255.0 - b_GTmatte/255.0,)  + 1e-12)
@@ -438,7 +439,7 @@ def main(_):
 
     total_loss = (alpha_loss + comp_loss) * 0.5
     tf.summary.scalar('total_loss',total_loss)
-    global_step = tf.Variable(0,trainable=False)
+    global_step = tf.Variable(0,name='global_step',trainable=False)
 
     learning_rate = tf.train.exponential_decay(FLAGS.learning_rate,
                                                 global_step,
@@ -449,7 +450,8 @@ def main(_):
     tf.summary.scalar('learning_rate',learning_rate)
     train_op = tf.train.AdamOptimizer(learning_rate = FLAGS.learning_rate).minimize(total_loss,global_step = global_step)
 
-    saver = tf.train.Saver(tf.trainable_variables() , max_to_keep = 10)
+    #saver = tf.train.Saver(tf.trainable_variables() , max_to_keep = 10)
+    saver = tf.train.Saver(max_to_keep = 10)
 
     coord = tf.train.Coordinator()
     summary_op = tf.summary.merge_all()
@@ -476,14 +478,13 @@ def main(_):
         else:
             print('Restoring pretrained model...')
             saver.restore(sess,tf.train.latest_checkpoint(FLAGS.save_ckpt_path))
+            print('Restoring finished')
         sess.graph.finalize()
-
+        epoch_num = global_step.eval() * train_batch_size // range_size
         while epoch_num < max_epochs:
-            print('epoch %d' % epoch_num)   
             while batch_num < batchs_per_epoch:
-                print('batch %d, loading batch data...' % batch_num)
                 batch_index = sess.run(index_dequeue_op)
-
+                total_start = timeit.default_timer()
                 if FLAGS.dataset_name == 'DAVIS':
                     batch_alpha_paths = paths_alpha[batch_index]
                     batch_trimap_paths = paths_trimap[batch_index]
@@ -496,14 +497,13 @@ def main(_):
                     batch_RGB_paths = paths_RGB[batch_index]
                     images_batch = load_data_adobe(batch_alpha_paths,batch_FG_paths,batch_BG_paths,batch_RGB_paths)
                 feed = {train_batch:images_batch}
-
+                train_start = timeit.default_timer()
                 _,loss,summary_str,step= sess.run([train_op,total_loss,summary_op,global_step],feed_dict = feed)
-                print('global_step: %d, loss is %f' %(step, loss))
-                
+                train_end = timeit.default_timer()
                 if step%FLAGS.save_ckpt_steps == 0:
                     saver.export_meta_graph(FLAGS.save_meta_path)
                     print('saving model......')
-                    saver.save(sess,FLAGS.save_ckpt_path + '/model.ckpt',global_step = step, write_meta_graph = True)
+                    saver.save(sess,FLAGS.save_ckpt_path + '/model.ckpt',global_step = global_step, write_meta_graph = True)
 
                     print('test on validation data...')
                     #vali_diff = []
@@ -530,6 +530,9 @@ def main(_):
                 if step%FLAGS.save_log_steps == 0:
                     summary_writer.add_summary(summary_str,global_step = step)
                 batch_num += 1
+                total_end = timeit.default_timer()
+                print('epoch: %d, global_step: %d, loss is %f, batch_train_time: %f, batch_total_time: %f' \
+                        %(epoch_num, step, loss, train_end - train_start, total_end - total_start))
             batch_num = 0
             epoch_num += 1
 
