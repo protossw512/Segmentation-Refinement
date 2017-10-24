@@ -12,22 +12,20 @@ def main(args):
 	
 	gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction = args.gpu_fraction)
 	with tf.Session(config=tf.ConfigProto(gpu_options = gpu_options)) as sess:
-		saver = tf.train.import_meta_graph('./meta_graph/my-model.meta')
-		saver.restore(sess,tf.train.latest_checkpoint('./model'))
-		image_batch = tf.get_collection('image_batch')[0]
-		GT_trimap = tf.get_collection('GT_trimap')[0]
+		saver = tf.train.import_meta_graph('/media/wenxuan/LargeDisk/wangxiny/seg_refine_train/adobe_1020_1/meta_graph/my-model.meta')
+		saver.restore(sess,tf.train.latest_checkpoint('/media/wenxuan/LargeDisk/wangxiny/seg_refine_train/adobe_1020_1/train'))
+		train_batch = tf.get_collection('train_batch')[0]
 		pred_mattes = tf.get_collection('pred_mattes')[0]
-
 		rgb = misc.imread(args.rgb)
-		alpha = misc.imread(args.alpha,'L')
-		trimap = generate_trimap(np.expand_dims(np.copy(alpha),2),np.expand_dims(alpha,2))[:,:,0]
-		origin_shape = alpha.shape
+		trimap = misc.imread(args.alpha,'L')
+		origin_shape = trimap.shape
 		rgb = np.expand_dims(misc.imresize(rgb.astype(np.uint8),[480,480,3]).astype(np.float32)-g_mean,0)
 		trimap = np.expand_dims(np.expand_dims(misc.imresize(trimap.astype(np.uint8),[480,480],interp = 'nearest').astype(np.float32),2),0)
-
-		feed_dict = {image_batch:rgb,GT_trimap:trimap}
+                batch = np.concatenate([trimap, trimap, rgb, rgb, rgb, rgb], axis=3)
+                batch = np.concatenate([batch, batch, batch, batch, batch, batch,batch, batch], axis=0)
+                feed_dict = {train_batch:batch}
 		pred_alpha = sess.run(pred_mattes,feed_dict = feed_dict)
-		final_alpha = misc.imresize(np.squeeze(pred_alpha),origin_shape)
+                final_alpha = misc.imresize(np.squeeze(pred_alpha[0]),origin_shape)
 		# misc.imshow(final_alpha)
 		misc.imsave('./alpha.png',final_alpha)
 

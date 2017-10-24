@@ -8,7 +8,7 @@ import os
 from sys import getrefcount
 import gc
 
-trimap_kernel = [val for val in range(20,40)]
+trimap_kernel = [val for val in range(7,20)]
 g_mean = np.array(([126.88,120.24,112.19])).reshape([1,1,3])
 image_height = 480
 image_width = 480
@@ -26,17 +26,23 @@ hard_samples = [
 ]
 
 
-def image_preprocessing(image):
-    distored_image, _ = distorted_bounding_box_crop(image)
-    distored_image = tf.image.random_flip_left_right(distored_image)
-    distored_image = tf.image.resize_images(distored_image, [image_height, image_width])
-    return distored_image
+def image_preprocessing(image, is_training=False):
+    if is_training:
+        distored_image, _ = distorted_bounding_box_crop(image)
+        distored_image = tf.image.random_flip_left_right(distored_image)
+        distored_image = tf.image.random_flip_up_down(distored_image)
+        #distored_image = tf.image.random_saturation(distored_image, lower=0.5, upper=1.5)
+        #distored_image = tf.image.random_brightness(distored_image, max_delta=32. / 255.)
+        distored_image = tf.image.resize_images(distored_image, [image_height, image_width])
+        return distored_image
+    else:
+        return image
 
 def distorted_bounding_box_crop(image,
                                 bbox=tf.constant([0.0,0.0,1.0,1.0], dtype=tf.float32, shape=[1,1,4]),
                                 min_object_covered=0.1,
-                                aspect_ratio_range=(0.75, 1.33),
-                                area_range=(0.25, 1.0),
+                                aspect_ratio_range=(0.5, 2.0),
+                                area_range=(0.04, 0.64),
                                 max_attempts=100,
                                 scope=None):
   """Generates cropped_image using a one of the bboxes randomly distorted.
@@ -229,24 +235,24 @@ def load_data_adobe(batch_alpha_paths,
 	for i in range(batch_size):
 			
 		alpha = misc.imread(batch_alpha_paths[i],'L')
-                if not (alpha.shape[0] == image_height and alpha.shape[1] == image_width):
-                    alpha = misc.imresize(alpha, (image_width, image_height))
+                if not (alpha.shape[0] == image_height*2 and alpha.shape[1] == image_width*2):
+                    alpha = misc.imresize(alpha, (image_width*2, image_height*2))
                 alpha = np.expand_dims(alpha,2)
 		
                 trimap = np.copy(alpha)
                 trimap = generate_trimap(trimap, alpha)
 
                 rgb = misc.imread(batch_RGB_paths[i])
-                if not (rgb.shape[0] == image_height and rgb.shape[1] == image_width):
-                    rgb = misc.imresize(rgb, (image_width, image_height))
+                if not (rgb.shape[0] == image_height*2 and rgb.shape[1] == image_width*2):
+                    rgb = misc.imresize(rgb, (image_width*2, image_height*2))
                 
                 fg = misc.imread(batch_FG_paths[i])
-                if not (fg.shape[0] == image_height and fg.shape[1] == image_width):
-                    fg = misc.imresize(fg, (image_width, image_height))
+                if not (fg.shape[0] == image_height*2 and fg.shape[1] == image_width*2):
+                    fg = misc.imresize(fg, (image_width*2, image_height*2))
 
                 bg = misc.imread(batch_BG_paths[i])
-                if not (bg.shape[0] == image_height and bg.shape[1] == image_width):
-                    bg = misc.imresize(bg, (image_width, image_height))
+                if not (bg.shape[0] == image_height*2 and bg.shape[1] == image_width*2):
+                    bg = misc.imresize(bg, (image_width*2, image_height*2))
 
 		batch_i = np.concatenate([alpha, trimap, rgb - g_mean, fg, bg, rgb],2)
 

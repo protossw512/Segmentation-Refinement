@@ -66,11 +66,11 @@ def main(_):
     index_queue = tf.train.range_input_producer(range_size, num_epochs=None,shuffle=True, seed=None, capacity=32)
     index_dequeue_op = index_queue.dequeue_many(train_batch_size, 'index_dequeue')
 
-    train_batch = tf.placeholder(tf.float32, shape=(train_batch_size, image_height, image_width, 14))
+    train_batch = tf.placeholder(tf.float32, shape=(train_batch_size, image_height*2, image_width*2, 14))
 
     tf.add_to_collection('train_batch', train_batch)
 
-    images = tf.map_fn(lambda img: image_preprocessing(img), train_batch)
+    images = tf.map_fn(lambda img: image_preprocessing(img, is_training=True), train_batch)
 
     en_parameters = []
     pool_parameters = []

@@ -1,13 +1,13 @@
-CUDA_VISIBLE_DEVICES=1 python matting_unpool.py \
+CUDA_VISIBLE_DEVICES=1 ../python matting_unpool.py \
 	--alpha_path=/media/wenxuan/LargeDisk/wangxiny/DAVIS/Alphas \
 	--trimap_path=/media/wenxuan/LargeDisk/wangxiny/DAVIS/SegPredictions \
 	--fg_path= \
 	--bg_path= \
 	--rgb_path=/media/wenxuan/LargeDisk/wangxiny/DAVIS/JPEGImages/480p \
 	--model_path=/home/wangxiny/Segmentation-Refinement/vgg16_weights.npz \
-	--log_dir=./log_1019 \
-	--save_ckpt_path=./train_1019 \
-	--save_meta_path=meta_graph_1019/my-model.meta \
+	--log_dir=/media/wenxuan/LargeDisk/wangxiny/seg_refine_train/davis_1019/log_1019 \
+	--save_ckpt_path=/media/wenxuan/LargeDisk/wangxiny/seg_refine_train/davis_1019/train_1019 \
+	--save_meta_path=/media/wenxuan/LargeDisk/wangxiny/seg_refine_train/davis_1019/meta_graph_1019/my-model.meta \
 	--dataset_name=DAVIS \
 	--image_height=480 \
 	--image_width=480 \
