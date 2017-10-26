@@ -10,8 +10,9 @@ import gc
 
 trimap_kernel = [val for val in range(7,20)]
 g_mean = np.array(([126.88,120.24,112.19])).reshape([1,1,3])
-image_height = 480
-image_width = 480
+sample_patch_size = np.array([320, 480, 640, 800])
+image_height = 320
+image_width = 320
 
 hard_samples = [
 1,4,8,11,13,15,16,19,28,42,43,44,46,65,68,69,70,81,91,92,94,101,104,
@@ -28,12 +29,12 @@ hard_samples = [
 
 def image_preprocessing(image, is_training=False):
     if is_training:
-        distored_image, _ = distorted_bounding_box_crop(image)
+        #distored_image, _ = distorted_bounding_box_crop(image)
+        distored_image = tf.image.resize_images(image, [image_height, image_width])
         distored_image = tf.image.random_flip_left_right(distored_image)
         distored_image = tf.image.random_flip_up_down(distored_image)
         #distored_image = tf.image.random_saturation(distored_image, lower=0.5, upper=1.5)
         #distored_image = tf.image.random_brightness(distored_image, max_delta=32. / 255.)
-        distored_image = tf.image.resize_images(distored_image, [image_height, image_width])
         return distored_image
     else:
         return image
@@ -113,11 +114,14 @@ def unpool(pool, ind, ksize=[1, 2, 2, 1], scope='unpool'):
 		return ret
 
 
-def UR_center(trimap):
-
-    target = np.where(trimap==128)
-    index = random.choice([i for i in range(len(target[0]))])
-    return  np.array(target)[:,index][:2]
+def crop_patch(trimap,cropsize):
+    border = cropsize / 2 - 1    
+    temp = np.where(trimap[border:-border-1, border:-border-1]==128)
+    if len(temp[0])==0 or len(temp[1])==0:
+	return None
+    candidates = np.array([temp[0] + border, temp[1] + border])
+    index = np.random.choice(len(candidates[0]))
+    return [candidates[0][index], candidates[1][index]]
 
 def load_path(alphas, trimaps, RGBs):
     '''
@@ -235,27 +239,37 @@ def load_data_adobe(batch_alpha_paths,
 	for i in range(batch_size):
 			
 		alpha = misc.imread(batch_alpha_paths[i],'L')
-                if not (alpha.shape[0] == image_height*2 and alpha.shape[1] == image_width*2):
-                    alpha = misc.imresize(alpha, (image_width*2, image_height*2))
                 alpha = np.expand_dims(alpha,2)
 		
                 trimap = np.copy(alpha)
                 trimap = generate_trimap(trimap, alpha)
+		crop_size = np.random.choice(sample_patch_size)
+		crop_center = crop_patch(trimap, crop_size)
 
                 rgb = misc.imread(batch_RGB_paths[i])
-                if not (rgb.shape[0] == image_height*2 and rgb.shape[1] == image_width*2):
-                    rgb = misc.imresize(rgb, (image_width*2, image_height*2))
                 
                 fg = misc.imread(batch_FG_paths[i])
-                if not (fg.shape[0] == image_height*2 and fg.shape[1] == image_width*2):
-                    fg = misc.imresize(fg, (image_width*2, image_height*2))
 
                 bg = misc.imread(batch_BG_paths[i])
-                if not (bg.shape[0] == image_height*2 and bg.shape[1] == image_width*2):
-                    bg = misc.imresize(bg, (image_width*2, image_height*2))
 
-		batch_i = np.concatenate([alpha, trimap, rgb - g_mean, fg, bg, rgb],2)
+		if crop_center is not None:
+		    row_start = crop_center[0] - crop_size / 2 - 1
+		    row_end = crop_center[0] + crop_size / 2 + 1
+                    col_start = crop_center[1] - crop_size / 2 - 1
+		    col_end = crop_center[1] + crop_size / 2 + 1
+		    alpha = alpha[row_start:row_end, col_start:col_end, :]
+		    trimap = trimap[row_start:row_end, col_start:col_end, :]
+		    rgb = rgb[row_start:row_end, col_start:col_end, :]
+		    fg = fg[row_start:row_end, col_start:col_end, :]
+		    bg = bg[row_start:row_end, col_start:col_end, :]
+		if alpha.shape[0] != image_height:
+		    alpha = np.expand_dims(misc.imresize(np.squeeze(alpha), (image_height,image_width)),2)
+		    trimap = np.expand_dims(misc.imresize(np.squeeze(trimap), (image_height,image_width)),2)
+		    rgb = misc.imresize(rgb, (image_height,image_width))
+		    fg = misc.imresize(fg, (image_height,image_width))
+		    bg = misc.imresize(bg, (image_height,image_width))
 
+	        batch_i = np.concatenate([alpha, trimap, rgb - g_mean, fg, bg, rgb],2)
                 batch_i = batch_i.astype(np.float32)
 
 		train_batch.append(batch_i)
