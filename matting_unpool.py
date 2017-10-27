@@ -27,6 +27,7 @@ flags.DEFINE_float('learning_rate', 0.0004, 'initial learning rate')
 flags.DEFINE_float('learning_rate_decay', 0.95, 'learning rate decay factor')
 flags.DEFINE_float('learning_rate_decay_steps', 100, 'learning rate decay after epochs')
 flags.DEFINE_boolean('restore_from_ckpt', 'False', 'Whether restore weights form ckpt file')
+flags.DEFINE_boolean('use_focal_loss', 'False', 'Whether use focal loss')
 
 FLAGS = flags.FLAGS
 
@@ -390,11 +391,17 @@ def main(_):
     if FLAGS.dataset_name == 'DAVIS':
         wl = tf.ones_like(b_trimap)
     else:
-        wl = tf.where(tf.equal(b_trimap,128), tf.fill([train_batch_size,image_width,image_height,1],1.), tf.fill([train_batch_size,image_width,image_height,1], 0.))
+	if FLAGS.use_focal_loss:
+            wl = tf.where(tf.equal(b_trimap,128), tf.fill([train_batch_size,image_width,image_height,1],.5), tf.fill([train_batch_size,image_width,image_height,1], 0.))
+        else:
+            wl = tf.where(tf.equal(b_trimap,128), tf.fill([train_batch_size,image_width,image_height,1],1.), tf.fill([train_batch_size,image_width,image_height,1], 0.))
     tf.summary.image('pred_mattes',pred_mattes,max_outputs = 4)
     tf.summary.image('wl',wl,max_outputs = 4)
     #alpha_diff = tf.sqrt(tf.square(pred_mattes/255.0 - b_GTmatte/255.0,)  + 1e-12)
-    alpha_diff = tf.sqrt(tf.square(pred_mattes - b_GTmatte/255.0,) + 1e-12)
+    if FLAGS.use_focal_loss:
+   	alpha_diff = tf.square(pred_mattes - b_GTmatte/255.0,) + 1e-12
+    else:
+    	alpha_diff = tf.sqrt(tf.square(pred_mattes - b_GTmatte/255.0,) + 1e-12)
 
     p_RGB = []
     pred_mattes.set_shape([train_batch_size,image_height,image_width,1])
@@ -424,7 +431,10 @@ def main(_):
     # changed 201709
     # TODO figure out how to deal with this loss
     #c_diff = tf.sqrt(tf.square(pred_RGB/255.0 - raw_RGBs/255.0) + 1e-12)
-    c_diff = tf.sqrt(tf.square(pred_RGB/255.0 - raw_RGBs/255.0) + 1e-12)
+    if FLAGS.use_focal_loss:
+    	c_diff = tf.square(pred_RGB/255.0 - raw_RGBs/255.0) + 1e-12
+    else:
+    	c_diff = tf.sqrt(tf.square(pred_RGB/255.0 - raw_RGBs/255.0) + 1e-12)
 
     alpha_loss = tf.reduce_sum(alpha_diff) / tf.reduce_sum(wl) / 2.
     comp_loss = tf.reduce_sum(c_diff) / tf.reduce_sum(wl) / 2.

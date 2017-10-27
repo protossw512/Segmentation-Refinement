@@ -249,17 +249,19 @@ def load_single_image(alpha_path, FG_path, BG_path, RGB_path):
 	    col_start = crop_center[1] - crop_size / 2 + 1
 	    col_end = crop_center[1] + crop_size / 2 - 1
 	    alpha = alpha[row_start:row_end, col_start:col_end, :]
-	    trimap = trimap[row_start:row_end, col_start:col_end, :]
 	    rgb = rgb[row_start:row_end, col_start:col_end, :]
 	    fg = fg[row_start:row_end, col_start:col_end, :]
 	    bg = bg[row_start:row_end, col_start:col_end, :]
 	if alpha.shape[0] != image_height:
 	    alpha = np.expand_dims(misc.imresize(np.squeeze(alpha), (image_height,image_width)),2)
-	    trimap = np.expand_dims(misc.imresize(np.squeeze(trimap), (image_height,image_width)),2)
+	    trimap = np.copy(alpha)
+	    trimap = generate_trimap(trimap, alpha)
 	    rgb = misc.imresize(rgb, (image_height,image_width))
 	    fg = misc.imresize(fg, (image_height,image_width))
 	    bg = misc.imresize(bg, (image_height,image_width))
-
+	else:
+	    trimap = np.copy(alpha)
+	    trimap = generate_trimap(trimap, alpha)
 	batch_i = np.concatenate([alpha, trimap, rgb - g_mean, fg, bg, rgb],2)
 	batch_i = batch_i.astype(np.float32)
 	return batch_i
@@ -283,7 +285,7 @@ def generate_trimap(trimap,alpha):
         dilate = ndimage.grey_dilation(alpha[:,:,0],size=(k_size,k_size))
         erode = ndimage.grey_erosion(alpha[:,:,0],size=(k_size,k_size))
 	# trimap[np.where((ndimage.grey_dilation(alpha[:,:,0],size=(k_size,k_size)) - ndimage.grey_erosion(alpha[:,:,0],size=(k_size,k_size)))!=0)] = 128
-	trimap[np.where(dilate - erode)] = 128
+	trimap[np.where(dilate - erode>10)] = 128
 	return trimap
 
 def preprocessing_single(alpha, trimap, rgb,name, image_height=480, image_width=854):
