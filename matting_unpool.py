@@ -392,6 +392,7 @@ def main(_):
         wl = tf.ones_like(b_trimap)
     else:
 	if FLAGS.use_focal_loss:
+	    print 'using focal loss'
             wl = tf.where(tf.equal(b_trimap,128), tf.fill([train_batch_size,image_width,image_height,1],.5), tf.fill([train_batch_size,image_width,image_height,1], 0.))
         else:
             wl = tf.where(tf.equal(b_trimap,128), tf.fill([train_batch_size,image_width,image_height,1],1.), tf.fill([train_batch_size,image_width,image_height,1], 0.))
