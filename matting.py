@@ -1,3 +1,4 @@
+from joblib import Parallel, delayed
 import tensorflow as tf
 import numpy as np
 import random
@@ -228,51 +229,51 @@ def load_path_adobe(alphas,FGs, BGs, RGBs):
         RGBs_abspath.append(RGB_path)
     return np.array(alphas_abspath),np.array(FGs_abspath),np.array(BGs_abspath),np.array(RGBs_abspath)
 
+def load_single_image(alpha_path, FG_path, BG_path, RGB_path):
+	alpha = misc.imread(alpha_path,'L')
+	alpha = np.expand_dims(alpha,2)
+	trimap = np.copy(alpha)
+	trimap = generate_trimap(trimap, alpha)
+	crop_size = np.random.choice(sample_patch_size)
+	crop_center = crop_patch(trimap[:,:,0], crop_size)
+
+	rgb = misc.imread(RGB_path)
+	
+	fg = misc.imread(FG_path)
+
+	bg = misc.imread(BG_path)
+
+	if crop_center is not None:
+	    row_start = crop_center[0] - crop_size / 2 + 1
+	    row_end = crop_center[0] + crop_size / 2 - 1
+	    col_start = crop_center[1] - crop_size / 2 + 1
+	    col_end = crop_center[1] + crop_size / 2 - 1
+	    alpha = alpha[row_start:row_end, col_start:col_end, :]
+	    trimap = trimap[row_start:row_end, col_start:col_end, :]
+	    rgb = rgb[row_start:row_end, col_start:col_end, :]
+	    fg = fg[row_start:row_end, col_start:col_end, :]
+	    bg = bg[row_start:row_end, col_start:col_end, :]
+	if alpha.shape[0] != image_height:
+	    alpha = np.expand_dims(misc.imresize(np.squeeze(alpha), (image_height,image_width)),2)
+	    trimap = np.expand_dims(misc.imresize(np.squeeze(trimap), (image_height,image_width)),2)
+	    rgb = misc.imresize(rgb, (image_height,image_width))
+	    fg = misc.imresize(fg, (image_height,image_width))
+	    bg = misc.imresize(bg, (image_height,image_width))
+
+	batch_i = np.concatenate([alpha, trimap, rgb - g_mean, fg, bg, rgb],2)
+	batch_i = batch_i.astype(np.float32)
+	return batch_i
+
+
 def load_data_adobe(batch_alpha_paths,
                     batch_FG_paths,
                     batch_BG_paths,
                     batch_RGB_paths):
 	
 	batch_size = batch_alpha_paths.shape[0]
-	train_batch = []
-	images_without_mean_reduction = []
-	for i in range(batch_size):
-			
-		alpha = misc.imread(batch_alpha_paths[i],'L')
-                alpha = np.expand_dims(alpha,2)
-		
-                trimap = np.copy(alpha)
-                trimap = generate_trimap(trimap, alpha)
-		crop_size = np.random.choice(sample_patch_size)
-		crop_center = crop_patch(trimap, crop_size)
-
-                rgb = misc.imread(batch_RGB_paths[i])
-                
-                fg = misc.imread(batch_FG_paths[i])
-
-                bg = misc.imread(batch_BG_paths[i])
-
-		if crop_center is not None:
-		    row_start = crop_center[0] - crop_size / 2 - 1
-		    row_end = crop_center[0] + crop_size / 2 + 1
-                    col_start = crop_center[1] - crop_size / 2 - 1
-		    col_end = crop_center[1] + crop_size / 2 + 1
-		    alpha = alpha[row_start:row_end, col_start:col_end, :]
-		    trimap = trimap[row_start:row_end, col_start:col_end, :]
-		    rgb = rgb[row_start:row_end, col_start:col_end, :]
-		    fg = fg[row_start:row_end, col_start:col_end, :]
-		    bg = bg[row_start:row_end, col_start:col_end, :]
-		if alpha.shape[0] != image_height:
-		    alpha = np.expand_dims(misc.imresize(np.squeeze(alpha), (image_height,image_width)),2)
-		    trimap = np.expand_dims(misc.imresize(np.squeeze(trimap), (image_height,image_width)),2)
-		    rgb = misc.imresize(rgb, (image_height,image_width))
-		    fg = misc.imresize(fg, (image_height,image_width))
-		    bg = misc.imresize(bg, (image_height,image_width))
-
-	        batch_i = np.concatenate([alpha, trimap, rgb - g_mean, fg, bg, rgb],2)
-                batch_i = batch_i.astype(np.float32)
-
-		train_batch.append(batch_i)
+	train_batch = Parallel(n_jobs=8)(delayed(load_single_image)(batch_alpha_paths[i], \
+				batch_FG_paths[i], batch_BG_paths[i], batch_RGB_paths[i]) \
+				for i in range(batch_size))
 	train_batch = np.stack(train_batch)
         #return np.expand_dims(train_batch[:,:,:,0],3),np.expand_dims(train_batch[:,:,:,1],3),train_batch[:,:,:,2:5], train_batch[:,:,:,5:8], train_batch[:,:,:,8:]
         return train_batch
