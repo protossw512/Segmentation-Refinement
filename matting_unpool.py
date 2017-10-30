@@ -154,9 +154,9 @@ def main(_):
                                                 staircase=True,
                                                 name='exponential_decay_learning_rate')
     tf.summary.scalar('learning_rate',learning_rate)
-    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-    with tf.control_dependencies(update_ops):
-        train_op = tf.train.AdamOptimizer(learning_rate = FLAGS.learning_rate).minimize(total_loss,global_step = global_step)
+    #update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+    #with tf.control_dependencies(update_ops):
+    train_op = tf.train.AdamOptimizer(learning_rate = FLAGS.learning_rate).minimize(total_loss,global_step = global_step)
 
     #saver = tf.train.Saver(tf.trainable_variables() , max_to_keep = 10)
     saver = tf.train.Saver(max_to_keep = 10)

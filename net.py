@@ -10,7 +10,7 @@ def base_net(input_tensor, trainable=True, training=True):
     with tf.name_scope('conv1_1') as scope:
         kernel = tf.Variable(tf.truncated_normal([3, 3, 4, 64], dtype=tf.float32,
                                                  stddev=1e-1), name='weights', trainable=trainable)
-        conv = tf.nn.conv2d(b_input, kernel, [1, 1, 1, 1], padding='SAME')
+        conv = tf.nn.conv2d(input_tensor, kernel, [1, 1, 1, 1], padding='SAME')
         biases = tf.Variable(tf.constant(0.0, shape=[64], dtype=tf.float32),
                              trainable=trainable, name='biases')
         out = tf.nn.bias_add(conv, biases)
