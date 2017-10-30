@@ -16,6 +16,7 @@ flags.DEFINE_string('rgb_path', None, 'Path to rgb files')
 flags.DEFINE_string('model_path', None, 'path to VGG weights')
 flags.DEFINE_string('log_dir', None, 'Path to save logs')
 flags.DEFINE_string('save_ckpt_path', None, 'Path to save ckpt files')
+flags.DEFINE_string('fine_tune_ckpt_path', None, 'Path to pretrained ckpt files')
 flags.DEFINE_string('save_meta_path', None, 'Path to save meta data')
 flags.DEFINE_string('dataset_name', None, 'dataset name, "Adobe", "DAVIS"')
 flags.DEFINE_integer('image_height', 320, 'input image height')
@@ -189,8 +190,12 @@ def main(_):
                     sess.run(en_parameters[i].assign(weights[k]))
             print('finish loading vgg16 model')
         else:
-            print('Restoring pretrained model...')
-            saver.restore(sess,tf.train.latest_checkpoint(FLAGS.save_ckpt_path))
+            if FLAGS.fine_tune_ckpt_path is None:
+                print('Restoring last ckpt...')
+                saver.restore(sess,tf.train.latest_checkpoint(FLAGS.save_ckpt_path))
+            else:
+                print('Restoring pretrained model...')
+                saver.restore(sess,tf.train.latest_checkpoint(FLAGS.fine_tune_ckpt_path))
             print('Restoring finished')
         sess.graph.finalize()
         epoch_num = global_step.eval() * train_batch_size // range_size
