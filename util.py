@@ -11,21 +11,9 @@ import gc
 
 trimap_kernel = [val for val in range(7,20)]
 g_mean = np.array(([126.88,120.24,112.19])).reshape([1,1,3])
-sample_patch_size = np.array([320, 480, 640])
+sample_patch_size = np.array([320, 400, 480])
 image_height = 320
 image_width = 320
-
-hard_samples = [
-1,4,8,11,13,15,16,19,28,42,43,44,46,65,68,69,70,81,91,92,94,101,104,
-118,137,145,152,155,156,176,187,189,191,193,198,203,208,212,215,
-216,221,233,239,243,254,264,265,267,272,278,279,281,288,290,291,292,
-293,298,300,301,302,309,316,320,325,337,345,346,347,369,370,374,381,
-386,402,416,432,443,450,451,454,456,457,459,464,487,490,499,502,513,
-514,552,555,558,559,577,580,587,593,602,608,609,613,632,634,639,640,
-649,663,688,710,717,718,723,729,736,740,741,745,757,769,775,778,785,
-788,805,808,815,820,834,839,840,845,846,848,860,861,864,868,870,872,
-877,885,889,892,894,895
-]
 
 
 def image_preprocessing(image, is_training=False):
@@ -115,9 +103,12 @@ def unpool(pool, ind, ksize=[1, 2, 2, 1], scope='unpool'):
 		return ret
 
 
-def crop_patch(trimap,cropsize):
-    border = cropsize / 2 - 1    
-    temp = np.where(trimap[border:-border-1, border:-border-1]==128)
+def crop_patch(trimap,cropsize,dataset):
+    border = cropsize / 2 - 1
+    if dataset == "DAVIS"
+        temp = np.where(trimap[border:-border-1, border:-border-1]>0)
+    else:
+        temp = np.where(trimap[border:-border-1, border:-border-1]=128)
     if len(temp[0])==0 or len(temp[1])==0:
 	return None
     candidates = np.array([temp[0] + border, temp[1] + border])
@@ -229,13 +220,13 @@ def load_path_adobe(alphas,FGs, BGs, RGBs):
         RGBs_abspath.append(RGB_path)
     return np.array(alphas_abspath),np.array(FGs_abspath),np.array(BGs_abspath),np.array(RGBs_abspath)
 
-def load_single_image(alpha_path, FG_path, BG_path, RGB_path):
+def load_single_image_adobe(alpha_path, FG_path, BG_path, RGB_path):
 	alpha = misc.imread(alpha_path,'L')
 	alpha = np.expand_dims(alpha,2)
 	trimap = np.copy(alpha)
 	trimap = generate_trimap(trimap, alpha)
 	crop_size = np.random.choice(sample_patch_size)
-	crop_center = crop_patch(trimap[:,:,0], crop_size)
+	crop_center = crop_patch(trimap[:,:,0], crop_size, 'adobe')
 
 	rgb = misc.imread(RGB_path)
 	
@@ -273,12 +264,94 @@ def load_data_adobe(batch_alpha_paths,
                     batch_RGB_paths):
 	
 	batch_size = batch_alpha_paths.shape[0]
-	train_batch = Parallel(n_jobs=8)(delayed(load_single_image)(batch_alpha_paths[i], \
+	train_batch = Parallel(n_jobs=8)(delayed(load_single_image_adobe)(batch_alpha_paths[i], \
 				batch_FG_paths[i], batch_BG_paths[i], batch_RGB_paths[i]) \
 				for i in range(batch_size))
 	train_batch = np.stack(train_batch)
         #return np.expand_dims(train_batch[:,:,:,0],3),np.expand_dims(train_batch[:,:,:,1],3),train_batch[:,:,:,2:5], train_batch[:,:,:,5:8], train_batch[:,:,:,8:]
         return train_batch
+
+def load_path_DAVIS(alphas,FGs, BGs, RGBs):
+    '''
+        rgb:
+            0001.png
+            ...
+        fg:
+            0001.png
+            ...
+        bg:
+            0001.png
+            ...
+        alpha:
+            0001.png
+    '''
+    image_names = os.listdir(alphas)
+    alphas_abspath = []
+    FGs_abspath = []
+    BGs_abspath = []
+    RGBs_abspath = []
+    for image_name in image_names:
+        alpha_path = os.path.join(alphas, image_name)
+        FG_path = os.path.join(FGs, image_name)
+        BG_path = os.path.join(BGs, image_name)
+        RGB_path = os.path.join(RGBs, image_name)
+        alphas_abspath.append(alpha_path)
+        FGs_abspath.append(FG_path)
+        BGs_abspath.append(BG_path)
+        RGBs_abspath.append(RGB_path)
+    return np.array(alphas_abspath),np.array(FGs_abspath),np.array(BGs_abspath),np.array(RGBs_abspath)
+
+def load_single_image_DAVIS(alpha_path, FG_path, BG_path, RGB_path):
+	alpha = misc.imread(alpha_path,'L')
+	alpha = np.expand_dims(alpha,2)
+	trimap = np.copy(alpha)
+	#trimap = generate_trimap(trimap, alpha)
+	crop_size = np.random.choice(sample_patch_size)
+	crop_center = crop_patch(trimap[:,:,0], crop_size, 'DAVIS')
+
+	rgb = misc.imread(RGB_path)
+	
+	fg = misc.imread(FG_path)
+
+	bg = misc.imread(BG_path)
+
+	if crop_center is not None:
+	    row_start = crop_center[0] - crop_size / 2 + 1
+	    row_end = crop_center[0] + crop_size / 2 - 1
+	    col_start = crop_center[1] - crop_size / 2 + 1
+	    col_end = crop_center[1] + crop_size / 2 - 1
+	    alpha = alpha[row_start:row_end, col_start:col_end, :]
+	    rgb = rgb[row_start:row_end, col_start:col_end, :]
+	    fg = fg[row_start:row_end, col_start:col_end, :]
+	    bg = bg[row_start:row_end, col_start:col_end, :]
+	if alpha.shape[0] != image_height:
+	    alpha = np.expand_dims(misc.imresize(np.squeeze(alpha), (image_height,image_width)),2)
+	    trimap = np.copy(alpha)
+	    trimap = generate_trimap(trimap, alpha)
+	    rgb = misc.imresize(rgb, (image_height,image_width))
+	    fg = misc.imresize(fg, (image_height,image_width))
+	    bg = misc.imresize(bg, (image_height,image_width))
+	else:
+	    trimap = np.copy(alpha)
+	    trimap = generate_trimap(trimap, alpha)
+	batch_i = np.concatenate([alpha, trimap, rgb - g_mean, fg, bg, rgb],2)
+	batch_i = batch_i.astype(np.float32)
+	return batch_i
+
+
+def load_data_DAVIS(batch_alpha_paths,
+                    batch_FG_paths,
+                    batch_BG_paths,
+                    batch_RGB_paths):
+	
+	batch_size = batch_alpha_paths.shape[0]
+	train_batch = Parallel(n_jobs=8)(delayed(load_single_image_DAVIS)(batch_alpha_paths[i], \
+				batch_FG_paths[i], batch_BG_paths[i], batch_RGB_paths[i]) \
+				for i in range(batch_size))
+	train_batch = np.stack(train_batch)
+        #return np.expand_dims(train_batch[:,:,:,0],3),np.expand_dims(train_batch[:,:,:,1],3),train_batch[:,:,:,2:5], train_batch[:,:,:,5:8], train_batch[:,:,:,8:]
+        return train_batch
+
 def generate_trimap(trimap,alpha):
 
 	k_size = random.choice(trimap_kernel)
@@ -288,23 +361,6 @@ def generate_trimap(trimap,alpha):
 	trimap[np.where(dilate - erode>10)] = 128
 	return trimap
 
-def preprocessing_single(alpha, trimap, rgb,name, image_height=480, image_width=854):
-
-    alpha = np.expand_dims(alpha,2)
-    trimap = np.expand_dims(trimap,2)
-
-    train_data = np.zeros([image_height,image_width,5])
-    train_pre = np.concatenate([alpha, trimap, rgb],2)
-    '''
-        temp:
-            0: alpha
-            1: trimap
-            2,3,4: rgb
-   '''
-    #rescale trimap to [0,1]
-    train_data = train_pre.astype(np.float32)
-#    misc.imsave('./train_alpha.png',train_data[:,:,4])
-    return train_data
 
 def load_alphamatting_data(test_alpha):
 	rgb_path = os.path.join(test_alpha,'rgb')

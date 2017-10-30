@@ -15,7 +15,7 @@ def extract_alpha(GTs_path, alphas_root):
             img = Image.open(filename)
             img = np.array(img)
             indexes = np.unique(img)
-            for index in indexes[1:]:
+            for index in range(1, max(indexes)+1):
                 alpha_path = os.path.join(alphas_root, class_folder, '%d' % index)
                 if not os.path.isdir(alpha_path):
                     os.makedirs(alpha_path)

@@ -1,7 +1,7 @@
 import tensorflow as tf
 import gpumemory
 import numpy as np
-from util import image_preprocessing,load_path,load_data,load_path_adobe,load_data_adobe,load_alphamatting_data,load_validation_data,unpool
+from util import *
 import os
 from scipy import misc
 import timeit
@@ -51,7 +51,8 @@ def main(_):
     dataset_fg = FLAGS.fg_path
     dataset_bg = FLAGS.bg_path
     if FLAGS.dataset_name == 'DAVIS':
-        paths_alpha,paths_trimap,paths_RGB = load_path(dataset_alpha,dataset_trimap,dataset_RGB)
+        #paths_alpha,paths_trimap,paths_RGB = load_path(dataset_alpha,dataset_trimap,dataset_RGB)
+        paths_alpha, paths_FG, paths_BG, paths_RGB = load_path_DAVIS(dataset_alpha, dataset_fg, dataset_bg, dataset_RGB)
     else:
         paths_alpha, paths_FG, paths_BG, paths_RGB = load_path_adobe(dataset_alpha, dataset_fg, dataset_bg, dataset_RGB)
 
@@ -84,7 +85,11 @@ def main(_):
 
     
     if FLAGS.dataset_name == 'DAVIS':
-        wl = tf.ones_like(b_trimap)
+	if FLAGS.use_focal_loss:
+	    print 'using focal loss'
+            wl = tf.where(tf.logicala_and(tf.greater(b_trimap,50), tf.less(b_trimap, 200)), tf.fill([train_batch_size,image_width,image_height,1],.5.), tf.fill([train_batch_size,image_width,image_height,1], 0.01))
+        else:
+            wl = tf.where(tf.logicala_and(tf.greater(b_trimap,50), tf.less(b_trimap, 200)), tf.fill([train_batch_size,image_width,image_height,1],1.), tf.fill([train_batch_size,image_width,image_height,1], 0.01))
     else:
 	if FLAGS.use_focal_loss:
 	    print 'using focal loss'
@@ -195,9 +200,10 @@ def main(_):
                 total_start = timeit.default_timer()
                 if FLAGS.dataset_name == 'DAVIS':
                     batch_alpha_paths = paths_alpha[batch_index]
-                    batch_trimap_paths = paths_trimap[batch_index]
+                    batch_FG_paths = paths_FG[batch_index]
+                    batch_BG_paths = paths_BG[batch_index]
                     batch_RGB_paths = paths_RGB[batch_index]
-                    images_batch = load_data(batch_alpha_paths,batch_trimap_paths,batch_RGB_paths)
+                    images_batch = load_data_DAVIS(batch_alpha_paths,batch_FG_paths,batch_BG_paths,batch_RGB_paths)
                 else:
                     batch_alpha_paths = paths_alpha[batch_index]
                     batch_FG_paths = paths_FG[batch_index]
