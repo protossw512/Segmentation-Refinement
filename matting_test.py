@@ -13,6 +13,7 @@ flags.DEFINE_string('trimap_path', None, 'Path to trimap files')
 flags.DEFINE_string('fg_path', None, 'Path to fg files')
 flags.DEFINE_string('bg_path', None, 'Path to bg files')
 flags.DEFINE_string('rgb_path', None, 'Path to rgb files')
+flags.DEFINE_string('pred_path', None, 'Path to save alpha prediction files')
 flags.DEFINE_string('model_path', None, 'path to VGG weights')
 flags.DEFINE_string('log_dir', None, 'Path to save logs')
 flags.DEFINE_string('save_ckpt_path', None, 'Path to save ckpt files')
@@ -46,6 +47,7 @@ def main(_):
     b_trimap, b_RGB = tf.split(input_images, [1, 3], 3)
 
     tf.summary.image('trimap',b_trimap,max_outputs = 4)
+    tf.summary.image('rgb',b_RGB,max_outputs = 4)
 
     b_input = tf.concat([b_RGB,b_trimap],3)
 
@@ -69,21 +71,31 @@ def main(_):
         tf.train.start_queue_runners(coord=coord,sess=sess)
         print('Restoring pretrained model...')
         saver.restore(sess,tf.train.latest_checkpoint(FLAGS.save_ckpt_path))
+        global_step.assign(0).eval()
         print('Restoring finished')
         sess.graph.finalize()
-        trimap_img = misc.imread(dataset_trimap, 'L')
-        ori_shape = trimap_img.shape
-        trimap_img = np.expand_dims(np.expand_dims(misc.imresize(trimap_img.astype(np.uint8), [image_height, image_width], interp='nearest').astype(np.float32),2),0)
-        rgb_img = misc.imread(dataset_RGB)
-        rgb_img = np.expand_dims(misc.imresize(rgb_img.astype(np.uint8), [image_height, image_width]).astype(np.float32) - g_mean, 0)
-        image = np.concatenate([trimap_img, rgb_img], axis=3)
-        feed = {input_images:image}
-        train_start = timeit.default_timer()
-        pred_alpha = sess.run(pred_mattes, feed_dict = feed)
-        pred_alpha = np.squeeze(pred_alpha)
-        pred_alpha = misc.imresize(pred_alpha, ori_shape)
-        misc.imsave('./pred_alpha.png', pred_alpha)
-        train_end = timeit.default_timer()
+        if os.path.isdir(dataset_trimap):
+            trimap_files = os.listdir(dataset_trimap)
+        else:
+            trimap_files = dataset_trimap
+        for trimap_file in trimap_files:
+            trimap_path = os.path.join(dataset_trimap, trimap_file)
+            RGB_path = os.path.join(dataset_RGB, trimap_file[:-3]+'png')
+            trimap_img = misc.imread(trimap_path, 'L')
+            ori_shape = trimap_img.shape
+            trimap_img = np.expand_dims(np.expand_dims(misc.imresize(trimap_img.astype(np.uint8), [image_height, image_width], interp='nearest').astype(np.float32),2),0)
+            rgb_img = misc.imread(RGB_path)
+            rgb_img = np.expand_dims(misc.imresize(rgb_img.astype(np.uint8), [image_height, image_width]).astype(np.float32) - g_mean, 0)
+            image = np.concatenate([trimap_img, rgb_img], axis=3)
+            feed = {input_images:image}
+            train_start = timeit.default_timer()
+            pred_alpha, summary_str, step = sess.run([pred_mattes,summary_op,global_step], feed_dict = feed)
+            summary_writer.add_summary(summary_str,global_step=step)
+            pred_alpha = np.squeeze(pred_alpha)
+            pred_alpha = misc.imresize(pred_alpha, ori_shape)
+            misc.imsave(os.path.join(FLAGS.pred_path, trimap_file), pred_alpha)
+            train_end = timeit.default_timer()
+            print ('global_step:%d, time:%f' % (step, train_end-train_start))
 
 if __name__ == '__main__':
     tf.app.run()

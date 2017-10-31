@@ -53,7 +53,7 @@ def main(_):
     dataset_bg = FLAGS.bg_path
     if FLAGS.dataset_name == 'DAVIS':
         #paths_alpha,paths_trimap,paths_RGB = load_path(dataset_alpha,dataset_trimap,dataset_RGB)
-        paths_alpha, paths_FG, paths_BG, paths_RGB = load_path_DAVIS(dataset_alpha, dataset_fg, dataset_bg, dataset_RGB)
+        paths_alpha, paths_trimap, paths_FG, paths_BG, paths_RGB = load_path_DAVIS(dataset_alpha, dataset_trimap,dataset_fg, dataset_bg, dataset_RGB)
     else:
         paths_alpha, paths_FG, paths_BG, paths_RGB = load_path_adobe(dataset_alpha, dataset_fg, dataset_bg, dataset_RGB)
 
@@ -88,9 +88,9 @@ def main(_):
     if FLAGS.dataset_name == 'DAVIS':
 	if FLAGS.use_focal_loss:
 	    print 'using focal loss'
-            wl = tf.where(tf.logicala_and(tf.greater(b_trimap,50), tf.less(b_trimap, 200)), tf.fill([train_batch_size,image_width,image_height,1],.5.), tf.fill([train_batch_size,image_width,image_height,1], 0.01))
+            wl = tf.where(tf.logical_and(tf.greater(b_trimap,50), tf.less(b_trimap, 200)), tf.fill([train_batch_size,image_width,image_height,1],1.), tf.fill([train_batch_size,image_width,image_height,1], 0.1))
         else:
-            wl = tf.where(tf.logicala_and(tf.greater(b_trimap,50), tf.less(b_trimap, 200)), tf.fill([train_batch_size,image_width,image_height,1],1.), tf.fill([train_batch_size,image_width,image_height,1], 0.01))
+            wl = tf.where(tf.logical_and(tf.greater(b_trimap,50), tf.less(b_trimap, 200)), tf.fill([train_batch_size,image_width,image_height,1],1.), tf.fill([train_batch_size,image_width,image_height,1], 0.1))
     else:
 	if FLAGS.use_focal_loss:
 	    print 'using focal loss'
@@ -190,12 +190,14 @@ def main(_):
                     sess.run(en_parameters[i].assign(weights[k]))
             print('finish loading vgg16 model')
         else:
+            print FLAGS.fine_tune_ckpt_path is None
             if FLAGS.fine_tune_ckpt_path is None:
                 print('Restoring last ckpt...')
                 saver.restore(sess,tf.train.latest_checkpoint(FLAGS.save_ckpt_path))
             else:
                 print('Restoring pretrained model...')
                 saver.restore(sess,tf.train.latest_checkpoint(FLAGS.fine_tune_ckpt_path))
+                global_step.assign(0).eval()
             print('Restoring finished')
         sess.graph.finalize()
         epoch_num = global_step.eval() * train_batch_size // range_size
@@ -205,10 +207,11 @@ def main(_):
                 total_start = timeit.default_timer()
                 if FLAGS.dataset_name == 'DAVIS':
                     batch_alpha_paths = paths_alpha[batch_index]
+                    batch_trimap_paths = paths_trimap[batch_index]
                     batch_FG_paths = paths_FG[batch_index]
                     batch_BG_paths = paths_BG[batch_index]
                     batch_RGB_paths = paths_RGB[batch_index]
-                    images_batch = load_data_DAVIS(batch_alpha_paths,batch_FG_paths,batch_BG_paths,batch_RGB_paths)
+                    images_batch = load_data_DAVIS(batch_alpha_paths,batch_trimap_paths,batch_FG_paths,batch_BG_paths,batch_RGB_paths)
                 else:
                     batch_alpha_paths = paths_alpha[batch_index]
                     batch_FG_paths = paths_FG[batch_index]

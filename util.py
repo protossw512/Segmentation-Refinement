@@ -105,10 +105,10 @@ def unpool(pool, ind, ksize=[1, 2, 2, 1], scope='unpool'):
 
 def crop_patch(trimap,cropsize,dataset):
     border = cropsize / 2 - 1
-    if dataset == "DAVIS"
+    if dataset == "DAVIS":
         temp = np.where(trimap[border:-border-1, border:-border-1]>0)
     else:
-        temp = np.where(trimap[border:-border-1, border:-border-1]=128)
+        temp = np.where(trimap[border:-border-1, border:-border-1]==128)
     if len(temp[0])==0 or len(temp[1])==0:
 	return None
     candidates = np.array([temp[0] + border, temp[1] + border])
@@ -271,7 +271,7 @@ def load_data_adobe(batch_alpha_paths,
         #return np.expand_dims(train_batch[:,:,:,0],3),np.expand_dims(train_batch[:,:,:,1],3),train_batch[:,:,:,2:5], train_batch[:,:,:,5:8], train_batch[:,:,:,8:]
         return train_batch
 
-def load_path_DAVIS(alphas,FGs, BGs, RGBs):
+def load_path_DAVIS(alphas,trimaps,FGs, BGs, RGBs):
     '''
         rgb:
             0001.png
@@ -287,24 +287,28 @@ def load_path_DAVIS(alphas,FGs, BGs, RGBs):
     '''
     image_names = os.listdir(alphas)
     alphas_abspath = []
+    trimaps_abspath = []
     FGs_abspath = []
     BGs_abspath = []
     RGBs_abspath = []
     for image_name in image_names:
         alpha_path = os.path.join(alphas, image_name)
+        trimap_path = os.path.join(trimaps, image_name)
         FG_path = os.path.join(FGs, image_name)
         BG_path = os.path.join(BGs, image_name)
         RGB_path = os.path.join(RGBs, image_name)
         alphas_abspath.append(alpha_path)
+        trimaps_abspath.append(trimap_path)
         FGs_abspath.append(FG_path)
         BGs_abspath.append(BG_path)
         RGBs_abspath.append(RGB_path)
-    return np.array(alphas_abspath),np.array(FGs_abspath),np.array(BGs_abspath),np.array(RGBs_abspath)
+    return np.array(alphas_abspath),np.array(trimaps_abspath),np.array(FGs_abspath),np.array(BGs_abspath),np.array(RGBs_abspath)
 
-def load_single_image_DAVIS(alpha_path, FG_path, BG_path, RGB_path):
+def load_single_image_DAVIS(alpha_path, trimap_path, FG_path, BG_path, RGB_path):
 	alpha = misc.imread(alpha_path,'L')
-	alpha = np.expand_dims(alpha,2)
-	trimap = np.copy(alpha)
+	alpha = np.expand_dims(alpha,axis=2)
+	trimap = misc.imread(trimap_path, 'L')
+        trimap = np.expand_dims(trimap, axis=2)
 	#trimap = generate_trimap(trimap, alpha)
 	crop_size = np.random.choice(sample_patch_size)
 	crop_center = crop_patch(trimap[:,:,0], crop_size, 'DAVIS')
@@ -321,32 +325,30 @@ def load_single_image_DAVIS(alpha_path, FG_path, BG_path, RGB_path):
 	    col_start = crop_center[1] - crop_size / 2 + 1
 	    col_end = crop_center[1] + crop_size / 2 - 1
 	    alpha = alpha[row_start:row_end, col_start:col_end, :]
-	    rgb = rgb[row_start:row_end, col_start:col_end, :]
+            trimap = trimap[row_start:row_end, col_start:col_end, :]
+            rgb = rgb[row_start:row_end, col_start:col_end, :]
 	    fg = fg[row_start:row_end, col_start:col_end, :]
 	    bg = bg[row_start:row_end, col_start:col_end, :]
 	if alpha.shape[0] != image_height:
 	    alpha = np.expand_dims(misc.imresize(np.squeeze(alpha), (image_height,image_width)),2)
-	    trimap = np.copy(alpha)
-	    trimap = generate_trimap(trimap, alpha)
+	    trimap = np.expand_dims(misc.imresize(np.squeeze(trimap), (image_height,image_width)),2)
 	    rgb = misc.imresize(rgb, (image_height,image_width))
 	    fg = misc.imresize(fg, (image_height,image_width))
 	    bg = misc.imresize(bg, (image_height,image_width))
-	else:
-	    trimap = np.copy(alpha)
-	    trimap = generate_trimap(trimap, alpha)
 	batch_i = np.concatenate([alpha, trimap, rgb - g_mean, fg, bg, rgb],2)
 	batch_i = batch_i.astype(np.float32)
 	return batch_i
 
 
 def load_data_DAVIS(batch_alpha_paths,
+                    batch_trimap_paths,
                     batch_FG_paths,
                     batch_BG_paths,
                     batch_RGB_paths):
 	
 	batch_size = batch_alpha_paths.shape[0]
 	train_batch = Parallel(n_jobs=8)(delayed(load_single_image_DAVIS)(batch_alpha_paths[i], \
-				batch_FG_paths[i], batch_BG_paths[i], batch_RGB_paths[i]) \
+				batch_trimap_paths[i], batch_FG_paths[i], batch_BG_paths[i], batch_RGB_paths[i]) \
 				for i in range(batch_size))
 	train_batch = np.stack(train_batch)
         #return np.expand_dims(train_batch[:,:,:,0],3),np.expand_dims(train_batch[:,:,:,1],3),train_batch[:,:,:,2:5], train_batch[:,:,:,5:8], train_batch[:,:,:,8:]
