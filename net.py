@@ -13,8 +13,8 @@ def refine_net(pred_mattes, b_RGB, trainable=True, training=True):
         biases = tf.Variable(tf.constant(0.0, shape=[64], dtype=tf.float32),
                              trainable=trainable, name='biases')
         out = tf.nn.bias_add(conv, biases)
-        ref_conv1 = tf.nn.relu(tf.layers.batch_normalization(out,training=training,
-                                trainable=trainable), name='ref_conv1')
+        out = tf.layers.batch_normalization(out, training=training, trainable=trainable)
+        ref_conv1 = tf.nn.relu(out)
         tf.summary.histogram('weights', kernel)
         tf.summary.histogram('biases', biases)
 
@@ -25,8 +25,8 @@ def refine_net(pred_mattes, b_RGB, trainable=True, training=True):
         biases = tf.Variable(tf.constant(0.0, shape=[64], dtype=tf.float32),
                              trainable=trainable, name='biases')
         out = tf.nn.bias_add(conv, biases)
-        ref_conv2 = tf.nn.relu(tf.layers.batch_normalization(out,training=training,
-                                trainable=trainable), name='ref_conv2')
+        out = tf.layers.batch_normalization(out, training=training, trainable=trainable)
+        ref_conv2 = tf.nn.relu(out)
         tf.summary.histogram('weights', kernel)
         tf.summary.histogram('biases', biases)
 
@@ -37,8 +37,8 @@ def refine_net(pred_mattes, b_RGB, trainable=True, training=True):
         biases = tf.Variable(tf.constant(0.0, shape=[64], dtype=tf.float32),
                              trainable=trainable, name='biases')
         out = tf.nn.bias_add(conv, biases)
-        ref_conv3 = tf.nn.relu(tf.layers.batch_normalization(out,training=training,
-                                trainable=trainable), name='ref_conv3')
+        out = tf.layers.batch_normalization(out, training=training, trainable=trainable)
+        ref_conv3 = tf.nn.relu(out)
         tf.summary.histogram('weights', kernel)
         tf.summary.histogram('biases', biases)
 
@@ -66,7 +66,7 @@ def base_net(input_tensor, trainable=True, training=True):
         biases = tf.Variable(tf.constant(0.0, shape=[64], dtype=tf.float32),
                              trainable=trainable, name='biases')
         out = tf.nn.bias_add(conv, biases)
-        conv1_1 = tf.nn.relu(out, name=scope)
+        conv1_1 = tf.nn.relu(out)
         en_parameters += [kernel, biases]
         tf.summary.histogram('weights', kernel)
         tf.summary.histogram('biases', biases)
@@ -76,7 +76,7 @@ def base_net(input_tensor, trainable=True, training=True):
         conv = tf.nn.conv2d(conv1_1, kernel, [1, 1, 1, 1], padding='SAME')
         biases = tf.Variable(tf.constant(0.0, shape=[64], dtype=tf.float32),trainable=trainable, name='biases')
         out = tf.nn.bias_add(conv, biases)
-        conv1_2 = tf.nn.relu(out, name=scope)
+        conv1_2 = tf.nn.relu(out)
         en_parameters += [kernel, biases]
         tf.summary.histogram('weights', kernel)
         tf.summary.histogram('biases', biases)
@@ -100,7 +100,7 @@ def base_net(input_tensor, trainable=True, training=True):
         biases = tf.Variable(tf.constant(0.0, shape=[128], dtype=tf.float32),
                              trainable=trainable, name='biases')
         out = tf.nn.bias_add(conv, biases)
-        conv2_1 = tf.nn.relu(out, name=scope)
+        conv2_1 = tf.nn.relu(out)
         en_parameters += [kernel, biases]
         tf.summary.histogram('weights', kernel)
         tf.summary.histogram('biases', biases)
@@ -111,7 +111,7 @@ def base_net(input_tensor, trainable=True, training=True):
         conv = tf.nn.conv2d(conv2_1, kernel, [1, 1, 1, 1], padding='SAME')
         biases = tf.Variable(tf.constant(0.0, shape=[128], dtype=tf.float32),trainable=trainable, name='biases')
         out = tf.nn.bias_add(conv, biases)
-        conv2_2 = tf.nn.relu(out, name=scope)
+        conv2_2 = tf.nn.relu(out)
         en_parameters += [kernel, biases]
         tf.summary.histogram('weights', kernel)
         tf.summary.histogram('biases', biases)
@@ -134,7 +134,7 @@ def base_net(input_tensor, trainable=True, training=True):
         biases = tf.Variable(tf.constant(0.0, shape=[256], dtype=tf.float32),
                              trainable=trainable, name='biases')
         out = tf.nn.bias_add(conv, biases)
-        conv3_1 = tf.nn.relu(out, name=scope)
+        conv3_1 = tf.nn.relu(out)
         en_parameters += [kernel, biases]
         tf.summary.histogram('weights', kernel)
         tf.summary.histogram('biases', biases)
@@ -147,7 +147,7 @@ def base_net(input_tensor, trainable=True, training=True):
         biases = tf.Variable(tf.constant(0.0, shape=[256], dtype=tf.float32),
                              trainable=trainable, name='biases')
         out = tf.nn.bias_add(conv, biases)
-        conv3_2 = tf.nn.relu(out, name=scope)
+        conv3_2 = tf.nn.relu(out)
         en_parameters += [kernel, biases]
         tf.summary.histogram('weights', kernel)
         tf.summary.histogram('biases', biases)
@@ -158,7 +158,7 @@ def base_net(input_tensor, trainable=True, training=True):
         conv = tf.nn.conv2d(conv3_2, kernel, [1, 1, 1, 1], padding='SAME')
         biases = tf.Variable(tf.constant(0.0, shape=[256], dtype=tf.float32),trainable=trainable, name='biases')
         out = tf.nn.bias_add(conv, biases)
-        conv3_3 = tf.nn.relu(out, name=scope)
+        conv3_3 = tf.nn.relu(out)
         en_parameters += [kernel, biases]
         tf.summary.histogram('weights', kernel)
         tf.summary.histogram('biases', biases)
@@ -181,7 +181,7 @@ def base_net(input_tensor, trainable=True, training=True):
         biases = tf.Variable(tf.constant(0.0, shape=[512], dtype=tf.float32),
                              trainable=trainable, name='biases')
         out = tf.nn.bias_add(conv, biases)
-        conv4_1 = tf.nn.relu(out, name=scope)
+        conv4_1 = tf.nn.relu(out)
         en_parameters += [kernel, biases]
         tf.summary.histogram('weights', kernel)
         tf.summary.histogram('biases', biases)
@@ -194,7 +194,7 @@ def base_net(input_tensor, trainable=True, training=True):
         biases = tf.Variable(tf.constant(0.0, shape=[512], dtype=tf.float32),
                              trainable=trainable, name='biases')
         out = tf.nn.bias_add(conv, biases)
-        conv4_2 = tf.nn.relu(out, name=scope)
+        conv4_2 = tf.nn.relu(out)
         en_parameters += [kernel, biases]
         tf.summary.histogram('weights', kernel)
         tf.summary.histogram('biases', biases)
@@ -205,7 +205,7 @@ def base_net(input_tensor, trainable=True, training=True):
         conv = tf.nn.conv2d(conv4_2, kernel, [1, 1, 1, 1], padding='SAME')
         biases = tf.Variable(tf.constant(0.0, shape=[512], dtype=tf.float32),trainable=trainable, name='biases')
         out = tf.nn.bias_add(conv, biases)
-        conv4_3 = tf.nn.relu(out, name=scope)
+        conv4_3 = tf.nn.relu(out)
         en_parameters += [kernel, biases]
         tf.summary.histogram('weights', kernel)
         tf.summary.histogram('biases', biases)
@@ -229,7 +229,7 @@ def base_net(input_tensor, trainable=True, training=True):
         biases = tf.Variable(tf.constant(0.0, shape=[512], dtype=tf.float32),
                          trainable=trainable, name='biases')
         out = tf.nn.bias_add(conv, biases)
-        conv5_1 = tf.nn.relu(out, name=scope)
+        conv5_1 = tf.nn.relu(out)
         en_parameters += [kernel, biases]
         tf.summary.histogram('weights', kernel)
         tf.summary.histogram('biases', biases)
@@ -242,7 +242,7 @@ def base_net(input_tensor, trainable=True, training=True):
         biases = tf.Variable(tf.constant(0.0, shape=[512], dtype=tf.float32),
                              trainable=trainable, name='biases')
         out = tf.nn.bias_add(conv, biases)
-        conv5_2 = tf.nn.relu(out, name=scope)
+        conv5_2 = tf.nn.relu(out)
         en_parameters += [kernel, biases]
         tf.summary.histogram('weights', kernel)
         tf.summary.histogram('biases', biases)
@@ -253,7 +253,7 @@ def base_net(input_tensor, trainable=True, training=True):
         conv = tf.nn.conv2d(conv5_2, kernel, [1, 1, 1, 1], padding='SAME')
         biases = tf.Variable(tf.constant(0.0, shape=[512], dtype=tf.float32),trainable=trainable, name='biases')
         out = tf.nn.bias_add(conv, biases)
-        conv5_3 = tf.nn.relu(out, name=scope)
+        conv5_3 = tf.nn.relu(out)
         en_parameters += [kernel, biases]
 
         tf.summary.histogram('weights', kernel)
@@ -276,7 +276,7 @@ def base_net(input_tensor, trainable=True, training=True):
         biases = tf.Variable(tf.constant(0.0, shape=[512], dtype=tf.float32),
                              trainable=trainable, name='biases')
         out = tf.nn.bias_add(conv, biases)
-        conv6_1 = tf.nn.relu(out, name='conv6_1')
+        conv6_1 = tf.nn.relu(out)
         tf.summary.histogram('weights', kernel)
         tf.summary.histogram('biases', biases)
 
@@ -288,7 +288,8 @@ def base_net(input_tensor, trainable=True, training=True):
         biases = tf.Variable(tf.constant(0.0, shape=[512], dtype=tf.float32),
                              trainable=trainable, name='biases')
         out = tf.nn.bias_add(conv, biases)
-        deconv6 = tf.nn.relu(tf.layers.batch_normalization(out,training=training,trainable=trainable), name='deconv6')
+        out = tf.layers.batch_normalization(out,training=training,trainable=trainable)
+        deconv6 = tf.nn.relu(out)
         tf.summary.histogram('weights', kernel)
         tf.summary.histogram('biases', biases)
         
@@ -300,8 +301,9 @@ def base_net(input_tensor, trainable=True, training=True):
         conv = tf.nn.conv2d(deconv5_1, kernel, [1, 1, 1, 1], padding='SAME')
         biases = tf.Variable(tf.constant(0.0, shape=[512], dtype=tf.float32),trainable=trainable, name='biases')
         out = tf.nn.bias_add(conv, biases)
-        deconv5_2 = tf.nn.relu(tf.layers.batch_normalization(out,training=training,trainable=trainable), name='deconv5_2')
-        
+        out = tf.layers.batch_normalization(out,training=training,trainable=trainable)
+        deconv5_2 = tf.nn.relu(out)
+        #TODO:change batch_normalization for rest deconvlayers
         # V1 = tf.squeeze(tf.slice(deconv5_2,(0,0,0,0),(1,-1,-1,1)))
         # V2 = tf.squeeze(tf.slice(deconv5_2,(0,0,0,1),(1,-1,-1,1)))
         # V3 = tf.squeeze(tf.slice(deconv5_2,(0,0,0,2),(1,-1,-1,1)))
