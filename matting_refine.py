@@ -5,7 +5,7 @@ from util import *
 import os
 from scipy import misc
 import timeit
-from net import base_net
+from net import base_net, refine_net
 
 flags = tf.app.flags
 flags.DEFINE_string('alpha_path', None, 'Path to alpha files')
@@ -80,11 +80,18 @@ def main(_):
 
     b_input = tf.concat([b_RGB,b_trimap],3)
     
-    pred_mattes, en_parameters = base_net(b_input, trainable=True, training=True)
+    pred_mattes, en_parameters = base_net(b_input, trainable=False, training=True)
 
-    tf.add_to_collection("pred_mattes", pred_mattes)
+    ref_pred_mattes = refine_net(pred_mattes, b_RGB, trainable=True, training=True)
 
+    final_pred_mattes = tf.add(pred_mattes, ref_pred_mattes)
     
+    tf.summary.image('ref_pred_mattes', ref_pred_mattes)
+    tf.summary.image('final_pred_mattes', final_pred_mattes)
+    tf.add_to_collection("pred_mattes", pred_mattes)
+    tf.add_to_collection("ref_pred_mattes", ref_pred_mattes)
+    tf.add_to_collection("final_pred_mattes", final_pred_mattes)
+
     if FLAGS.dataset_name == 'DAVIS':
 	if FLAGS.use_focal_loss:
 	    print 'using focal loss'
@@ -104,6 +111,11 @@ def main(_):
    	alpha_diff = tf.square(pred_mattes - b_GTmatte/255.0,) + 1e-12
     else:
     	alpha_diff = tf.sqrt(tf.square(pred_mattes - b_GTmatte/255.0,) + 1e-12)
+
+    if FLAGS.use_focal_loss:
+   	ref_diff = tf.square(final_pred_mattes - b_GTmatte/255.0,) + 1e-12
+    else:
+    	ref_diff = tf.sqrt(tf.square(final_pred_mattes - b_GTmatte/255.0,) + 1e-12)
 
     p_RGB = []
     pred_mattes.set_shape([train_batch_size,image_height,image_width,1])
@@ -136,10 +148,9 @@ def main(_):
     if FLAGS.use_focal_loss:
     	c_diff = tf.square(pred_RGB/255.0 - raw_RGBs/255.0) + 1e-12
     else:
-    	c_diff = tf.sqrt(tf.square(pred_RGB/255.0 - raw_RGBs/255.0) + 1e-12)
-
-    alpha_loss = tf.reduce_sum(alpha_diff) / tf.reduce_sum(wl) / 2.
-    comp_loss = tf.reduce_sum(c_diff) / tf.reduce_sum(wl) / 2.
+        alpha_loss = tf.reduce_sum(alpha_diff) / tf.reduce_sum(wl) / 2.
+        comp_loss = tf.reduce_sum(c_diff) / tf.reduce_sum(wl) / 2.
+        ref_loss = tf.reduce_sum(ref_diff) / tf.reduce_sum(wl) / 2.
     #alpha_loss = tf.reduce_sum(alpha_diff * wl)/(tf.reduce_sum(wl))
     #comp_loss = tf.reduce_sum(c_diff * wl)/(tf.reduce_sum(wl))
 
@@ -148,8 +159,9 @@ def main(_):
 
     tf.summary.scalar('alpha_loss',alpha_loss)
     tf.summary.scalar('comp_loss',comp_loss)
-
-    total_loss = (alpha_loss + comp_loss) * 0.5
+    tf.summary.scalar('ref_loss', ref_loss)
+    
+    total_loss = (alpha_loss + comp_loss) * 0.5 + ref_loss
     tf.summary.scalar('total_loss',total_loss)
     global_step = tf.Variable(0,name='global_step',trainable=False)
 
@@ -162,7 +174,7 @@ def main(_):
     tf.summary.scalar('learning_rate',learning_rate)
     #update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
     #with tf.control_dependencies(update_ops):
-    train_op = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(total_loss,global_step = global_step)
+    train_op = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(ref_loss,global_step = global_step)
 
     #saver = tf.train.Saver(tf.trainable_variables() , max_to_keep = 10)
     saver = tf.train.Saver(max_to_keep = 10)
@@ -220,7 +232,7 @@ def main(_):
                     images_batch = load_data_adobe(batch_alpha_paths,batch_FG_paths,batch_BG_paths,batch_RGB_paths)
                 feed = {train_batch:images_batch}
                 train_start = timeit.default_timer()
-                _,loss,summary_str,step= sess.run([train_op,total_loss,summary_op,global_step],feed_dict = feed)
+                _,ref_loss,summary_str,step= sess.run([train_op,ref_loss,summary_op,global_step],feed_dict = feed)
                 train_end = timeit.default_timer()
                 if step%FLAGS.save_ckpt_steps == 0:
                     saver.export_meta_graph(FLAGS.save_meta_path)

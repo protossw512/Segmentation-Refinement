@@ -2,6 +2,58 @@ import tensorflow as tf
 import numpy as np
 from util import unpool
 
+def refine_net(pred_mattes, b_RGB, trainable=True, training=True):
+    pred_mattes_scaled = tf.scalar_mul(255.0, pred_mattes)
+    b_input = tf.concat([b_RGB,pred_mattes_scaled],3)
+
+    with tf.name_scope('ref_conv1') as scope:
+        kernel = tf.Variable(tf.turncated_normal([3, 3, 4, 64], dtype=tf.float32,
+                             stddev=1e-1), name='weights', trainable=trainable)
+        conv = tf.nn.conv2d(b_input, kernel, [1, 1, 1, 1], padding='SAME')
+        biases = tf.Variable(tf.constant(0.0, shape=[64], dtype=tf.float32),
+                             trainable=trainable, name='biases')
+        out = tf.nn.bias_add(conv, biases)
+        ref_conv1 = tf.nn.relu(tf.layers.batch_normalization(out,training=training,
+                                trainable=trainable), name='ref_conv1')
+        tf.summary.histogram('weights', kernel)
+        tf.summary.histogram('biases', biases)
+
+    with tf.name_scope('ref_conv2') as scope:
+        kernel = tf.Variable(tf.turncated_normal([3, 3, 64, 64], dtype=tf.float32,
+                             stddev=1e-1), name='weights', trainable=trainable)
+        conv = tf.nn.conv2d(ref_conv1, kernel, [1, 1, 1, 1], padding='SAME')
+        biases = tf.Variable(tf.constant(0.0, shape=[64], dtype=tf.float32),
+                             trainable=trainable, name='biases')
+        out = tf.nn.bias_add(conv, biases)
+        ref_conv2 = tf.nn.relu(tf.layers.batch_normalization(out,training=training,
+                                trainable=trainable), name='ref_conv2')
+        tf.summary.histogram('weights', kernel)
+        tf.summary.histogram('biases', biases)
+
+    with tf.name_scope('ref_conv3') as scope:
+        kernel = tf.Variable(tf.turncated_normal([3, 3, 64, 64], dtype=tf.float32,
+                             stddev=1e-1), name='weights', trainable=trainable)
+        conv = tf.nn.conv2d(ref_conv2, kernel, [1, 1, 1, 1], padding='SAME')
+        biases = tf.Variable(tf.constant(0.0, shape=[64], dtype=tf.float32),
+                             trainable=trainable, name='biases')
+        out = tf.nn.bias_add(conv, biases)
+        ref_conv3 = tf.nn.relu(tf.layers.batch_normalization(out,training=training,
+                                trainable=trainable), name='ref_conv3')
+        tf.summary.histogram('weights', kernel)
+        tf.summary.histogram('biases', biases)
+
+    with tf.variable_scope('ref_pred_alpha') as scope:
+        kernel = tf.Variable(tf.truncated_normal([3, 3, 64, 1], dtype=tf.float32,
+                                                 stddev=1e-1), name='weights', trainable=trainable)
+        conv = tf.nn.conv2d(ref_conv3, kernel, [1, 1, 1, 1], padding='SAME')
+        biases = tf.Variable(tf.constant(0.0, shape=[1], dtype=tf.float32),
+                             trainable=trainable, name='biases')
+        out = tf.nn.bias_add(conv, biases)
+        ref_pred_mattes = tf.nn.sigmoid(out)
+        tf.summary.histogram('weights', kernel)
+        tf.summary.histogram('biases', biases)
+        
+    return ref_pred_mattes
 
 def base_net(input_tensor, trainable=True, training=True):
     # conv1_1
@@ -9,7 +61,7 @@ def base_net(input_tensor, trainable=True, training=True):
     pool_parameters = []
     with tf.name_scope('conv1_1') as scope:
         kernel = tf.Variable(tf.truncated_normal([3, 3, 4, 64], dtype=tf.float32,
-                                                 stddev=1e-1), name='weights', trainable=trainable)
+                             stddev=1e-1), name='weights', trainable=trainable)
         conv = tf.nn.conv2d(input_tensor, kernel, [1, 1, 1, 1], padding='SAME')
         biases = tf.Variable(tf.constant(0.0, shape=[64], dtype=tf.float32),
                              trainable=trainable, name='biases')
@@ -345,5 +397,5 @@ def base_net(input_tensor, trainable=True, training=True):
         tf.summary.histogram('weights', kernel)
         tf.summary.histogram('biases', biases)
         
-        return pred_mattes, en_parameters
+    return pred_mattes, en_parameters
 

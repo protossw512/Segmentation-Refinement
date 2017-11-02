@@ -80,7 +80,7 @@ def main(_):
             trimap_files = dataset_trimap
         for trimap_file in trimap_files:
             trimap_path = os.path.join(dataset_trimap, trimap_file)
-            RGB_path = os.path.join(dataset_RGB, trimap_file[:-3]+'png')
+            RGB_path = os.path.join(dataset_RGB, trimap_file[:-3]+'jpg')
             trimap_img = misc.imread(trimap_path, 'L')
             ori_shape = trimap_img.shape
             trimap_img = np.expand_dims(np.expand_dims(misc.imresize(trimap_img.astype(np.uint8), [image_height, image_width], interp='nearest').astype(np.float32),2),0)
