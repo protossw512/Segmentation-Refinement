@@ -88,13 +88,13 @@ def main(_):
     if FLAGS.dataset_name == 'DAVIS':
 	if FLAGS.use_focal_loss:
 	    print 'using focal loss'
-            wl = tf.where(tf.logical_and(tf.greater(b_trimap,50), tf.less(b_trimap, 200)), tf.fill([train_batch_size,image_width,image_height,1],1.), tf.fill([train_batch_size,image_width,image_height,1], 0.1))
+            wl = tf.where(tf.logical_and(tf.greater(b_trimap,5), tf.less(b_trimap, 250)), tf.fill([train_batch_size,image_width,image_height,1],1.), tf.fill([train_batch_size,image_width,image_height,1], 0.1))
         else:
-            wl = tf.where(tf.logical_and(tf.greater(b_trimap,50), tf.less(b_trimap, 200)), tf.fill([train_batch_size,image_width,image_height,1],1.), tf.fill([train_batch_size,image_width,image_height,1], 0.1))
+            wl = tf.where(tf.logical_and(tf.greater(b_trimap,5), tf.less(b_trimap, 250)), tf.fill([train_batch_size,image_width,image_height,1],1.), tf.fill([train_batch_size,image_width,image_height,1], 0.1))
     else:
 	if FLAGS.use_focal_loss:
 	    print 'using focal loss'
-            wl = tf.where(tf.equal(b_trimap,128), tf.fill([train_batch_size,image_width,image_height,1],.5), tf.fill([train_batch_size,image_width,image_height,1], 0.))
+            wl = tf.where(tf.equal(b_trimap,128), tf.fill([train_batch_size,image_width,image_height,1],1.), tf.fill([train_batch_size,image_width,image_height,1], 0.))
         else:
             wl = tf.where(tf.equal(b_trimap,128), tf.fill([train_batch_size,image_width,image_height,1],1.), tf.fill([train_batch_size,image_width,image_height,1], 0.))
     tf.summary.image('pred_mattes',pred_mattes,max_outputs = 4)
@@ -138,8 +138,8 @@ def main(_):
     else:
     	c_diff = tf.sqrt(tf.square(pred_RGB/255.0 - raw_RGBs/255.0) + 1e-12)
 
-    alpha_loss = tf.reduce_sum(alpha_diff) / tf.reduce_sum(wl) / 2.
-    comp_loss = tf.reduce_sum(c_diff) / tf.reduce_sum(wl) / 2.
+    alpha_loss = tf.reduce_sum(alpha_diff*wl) / tf.reduce_sum(wl) / 2.
+    comp_loss = tf.reduce_sum(c_diff*wl) / tf.reduce_sum(wl) / 2.
     #alpha_loss = tf.reduce_sum(alpha_diff * wl)/(tf.reduce_sum(wl))
     #comp_loss = tf.reduce_sum(c_diff * wl)/(tf.reduce_sum(wl))
 
