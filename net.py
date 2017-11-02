@@ -7,7 +7,7 @@ def refine_net(pred_mattes, b_RGB, trainable=True, training=True):
     b_input = tf.concat([b_RGB,pred_mattes_scaled],3)
 
     with tf.name_scope('ref_conv1') as scope:
-        kernel = tf.Variable(tf.turncated_normal([3, 3, 4, 64], dtype=tf.float32,
+        kernel = tf.Variable(tf.truncated_normal([3, 3, 4, 64], dtype=tf.float32,
                              stddev=1e-1), name='weights', trainable=trainable)
         conv = tf.nn.conv2d(b_input, kernel, [1, 1, 1, 1], padding='SAME')
         biases = tf.Variable(tf.constant(0.0, shape=[64], dtype=tf.float32),
@@ -19,7 +19,7 @@ def refine_net(pred_mattes, b_RGB, trainable=True, training=True):
         tf.summary.histogram('biases', biases)
 
     with tf.name_scope('ref_conv2') as scope:
-        kernel = tf.Variable(tf.turncated_normal([3, 3, 64, 64], dtype=tf.float32,
+        kernel = tf.Variable(tf.truncated_normal([3, 3, 64, 64], dtype=tf.float32,
                              stddev=1e-1), name='weights', trainable=trainable)
         conv = tf.nn.conv2d(ref_conv1, kernel, [1, 1, 1, 1], padding='SAME')
         biases = tf.Variable(tf.constant(0.0, shape=[64], dtype=tf.float32),
@@ -31,7 +31,7 @@ def refine_net(pred_mattes, b_RGB, trainable=True, training=True):
         tf.summary.histogram('biases', biases)
 
     with tf.name_scope('ref_conv3') as scope:
-        kernel = tf.Variable(tf.turncated_normal([3, 3, 64, 64], dtype=tf.float32,
+        kernel = tf.Variable(tf.truncated_normal([3, 3, 64, 64], dtype=tf.float32,
                              stddev=1e-1), name='weights', trainable=trainable)
         conv = tf.nn.conv2d(ref_conv2, kernel, [1, 1, 1, 1], padding='SAME')
         biases = tf.Variable(tf.constant(0.0, shape=[64], dtype=tf.float32),
