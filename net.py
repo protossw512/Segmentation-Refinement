@@ -52,7 +52,7 @@ def refine_net(pred_mattes, b_RGB, trainable=True, training=True):
         ref_pred_mattes = tf.nn.sigmoid(out)
         tf.summary.histogram('weights', kernel)
         tf.summary.histogram('biases', biases)
-        
+
     return ref_pred_mattes
 
 def base_net(input_tensor, trainable=True, training=True):
@@ -86,7 +86,7 @@ def base_net(input_tensor, trainable=True, training=True):
         # V3 = tf.squeeze(tf.slice(conv1_2,(0,0,0,2),(1,-1,-1,1)))
         # V4 = tf.squeeze(tf.slice(conv1_2,(0,0,0,3),(1,-1,-1,1)))
         # V5 = tf.squeeze(tf.slice(conv1_2,(0,0,0,4),(1,-1,-1,1)))
-        # V = tf.expand_dims(tf.stack([V1,V2,V3,V4,V5]),3) 
+        # V = tf.expand_dims(tf.stack([V1,V2,V3,V4,V5]),3)
         # tf.summary.image('conv1_2',V,max_outputs = 5)
 
     # pool1
@@ -120,7 +120,7 @@ def base_net(input_tensor, trainable=True, training=True):
         # V3 = tf.squeeze(tf.slice(conv2_2,(0,0,0,2),(1,-1,-1,1)))
         # V4 = tf.squeeze(tf.slice(conv2_2,(0,0,0,3),(1,-1,-1,1)))
         # V5 = tf.squeeze(tf.slice(conv2_2,(0,0,0,4),(1,-1,-1,1)))
-        # V = tf.expand_dims(tf.stack([V1,V2,V3,V4,V5]),3) 
+        # V = tf.expand_dims(tf.stack([V1,V2,V3,V4,V5]),3)
         # tf.summary.image('conv2_2',V,max_outputs = 5)
 
     # pool2
@@ -168,7 +168,7 @@ def base_net(input_tensor, trainable=True, training=True):
         # V3 = tf.squeeze(tf.slice(conv3_3,(0,0,0,2),(1,-1,-1,1)))
         # V4 = tf.squeeze(tf.slice(conv3_3,(0,0,0,3),(1,-1,-1,1)))
         # V5 = tf.squeeze(tf.slice(conv3_3,(0,0,0,4),(1,-1,-1,1)))
-        # V = tf.expand_dims(tf.stack([V1,V2,V3,V4,V5]),3) 
+        # V = tf.expand_dims(tf.stack([V1,V2,V3,V4,V5]),3)
         # tf.summary.image('conv3_3',V,max_outputs = 5)
     # pool3
     pool3,arg3 = tf.nn.max_pool_with_argmax(conv3_3,ksize=[1, 2, 2, 1],strides=[1, 2, 2, 1],padding='SAME',name='pool3')
@@ -215,7 +215,7 @@ def base_net(input_tensor, trainable=True, training=True):
         # V3 = tf.squeeze(tf.slice(conv4_3,(0,0,0,2),(1,-1,-1,1)))
         # V4 = tf.squeeze(tf.slice(conv4_3,(0,0,0,3),(1,-1,-1,1)))
         # V5 = tf.squeeze(tf.slice(conv4_3,(0,0,0,4),(1,-1,-1,1)))
-        # V = tf.expand_dims(tf.stack([V1,V2,V3,V4,V5]),3) 
+        # V = tf.expand_dims(tf.stack([V1,V2,V3,V4,V5]),3)
         # tf.summary.image('conv4_3',V,max_outputs = 5)
 
     # pool4
@@ -263,7 +263,7 @@ def base_net(input_tensor, trainable=True, training=True):
         # V3 = tf.squeeze(tf.slice(conv5_3,(0,0,0,2),(1,-1,-1,1)))
         # V4 = tf.squeeze(tf.slice(conv5_3,(0,0,0,3),(1,-1,-1,1)))
         # V5 = tf.squeeze(tf.slice(conv5_3,(0,0,0,4),(1,-1,-1,1)))
-        # V = tf.expand_dims(tf.stack([V1,V2,V3,V4,V5]),3) 
+        # V = tf.expand_dims(tf.stack([V1,V2,V3,V4,V5]),3)
         # tf.summary.image('conv5_3',V,max_outputs = 5)
     # pool5
     pool5,arg5 = tf.nn.max_pool_with_argmax(conv5_3,ksize=[1, 2, 2, 1],strides=[1, 2, 2, 1],padding='SAME',name='pool4')
@@ -292,9 +292,9 @@ def base_net(input_tensor, trainable=True, training=True):
         deconv6 = tf.nn.relu(out)
         tf.summary.histogram('weights', kernel)
         tf.summary.histogram('biases', biases)
-        
+
     deconv5_1 = unpool(deconv6,pool_parameters[-1])
-        
+
     #deconv5_2
     with tf.variable_scope('deconv5_2') as scope:
         kernel = tf.Variable(tf.truncated_normal([5, 5, 512, 512], dtype=tf.float32,stddev=1e-1), name='weights', trainable=trainable)
@@ -309,7 +309,7 @@ def base_net(input_tensor, trainable=True, training=True):
         # V3 = tf.squeeze(tf.slice(deconv5_2,(0,0,0,2),(1,-1,-1,1)))
         # V4 = tf.squeeze(tf.slice(deconv5_2,(0,0,0,3),(1,-1,-1,1)))
         # V5 = tf.squeeze(tf.slice(deconv5_2,(0,0,0,4),(1,-1,-1,1)))
-        # V = tf.expand_dims(tf.stack([V1,V2,V3,V4,V5]),3) 
+        # V = tf.expand_dims(tf.stack([V1,V2,V3,V4,V5]),3)
         # tf.summary.image('deconv5_2',V,max_outputs = 5)
         tf.summary.histogram('weights', kernel)
         tf.summary.histogram('biases', biases)
@@ -322,14 +322,15 @@ def base_net(input_tensor, trainable=True, training=True):
         conv = tf.nn.conv2d(deconv4_1, kernel, [1, 1, 1, 1], padding='SAME')
         biases = tf.Variable(tf.constant(0.0, shape=[256], dtype=tf.float32),trainable=trainable, name='biases')
         out = tf.nn.bias_add(conv, biases)
-        deconv4_2 = tf.nn.relu(tf.layers.batch_normalization(out,training=training,trainable=trainable), name='deconv4_2')
+        out = tf.layers.batch_normalization(out,training=training,trainable=trainable)
+        deconv4_2 = tf.nn.relu(out)
 
         # V1 = tf.squeeze(tf.slice(deconv4_2,(0,0,0,0),(1,-1,-1,1)))
         # V2 = tf.squeeze(tf.slice(deconv4_2,(0,0,0,1),(1,-1,-1,1)))
         # V3 = tf.squeeze(tf.slice(deconv4_2,(0,0,0,2),(1,-1,-1,1)))
         # V4 = tf.squeeze(tf.slice(deconv4_2,(0,0,0,3),(1,-1,-1,1)))
         # V5 = tf.squeeze(tf.slice(deconv4_2,(0,0,0,4),(1,-1,-1,1)))
-        # V = tf.expand_dims(tf.stack([V1,V2,V3,V4,V5]),3) 
+        # V = tf.expand_dims(tf.stack([V1,V2,V3,V4,V5]),3)
         # tf.summary.image('deconv4_2',V,max_outputs = 5)
         tf.summary.histogram('weights', kernel)
         tf.summary.histogram('biases', biases)
@@ -342,14 +343,15 @@ def base_net(input_tensor, trainable=True, training=True):
         conv = tf.nn.conv2d(deconv3_1, kernel, [1, 1, 1, 1], padding='SAME')
         biases = tf.Variable(tf.constant(0.0, shape=[128], dtype=tf.float32),trainable=trainable, name='biases')
         out = tf.nn.bias_add(conv, biases)
-        deconv3_2 = tf.nn.relu(tf.layers.batch_normalization(out,training=training,trainable=trainable), name='deconv3_2')
+        out = tf.layers.batch_normalization(out,training=training,trainable=trainable)
+        deconv3_2 = tf.nn.relu(out)
 
         # V1 = tf.squeeze(tf.slice(deconv3_2,(0,0,0,0),(1,-1,-1,1)))
         # V2 = tf.squeeze(tf.slice(deconv3_2,(0,0,0,1),(1,-1,-1,1)))
         # V3 = tf.squeeze(tf.slice(deconv3_2,(0,0,0,2),(1,-1,-1,1)))
         # V4 = tf.squeeze(tf.slice(deconv3_2,(0,0,0,3),(1,-1,-1,1)))
         # V5 = tf.squeeze(tf.slice(deconv3_2,(0,0,0,4),(1,-1,-1,1)))
-        # V = tf.expand_dims(tf.stack([V1,V2,V3,V4,V5]),3) 
+        # V = tf.expand_dims(tf.stack([V1,V2,V3,V4,V5]),3)
         # tf.summary.image('deconv3_2',V,max_outputs = 5)
         tf.summary.histogram('weights', kernel)
         tf.summary.histogram('biases', biases)
@@ -362,7 +364,8 @@ def base_net(input_tensor, trainable=True, training=True):
         conv = tf.nn.conv2d(deconv2_1, kernel, [1, 1, 1, 1], padding='SAME')
         biases = tf.Variable(tf.constant(0.0, shape=[64], dtype=tf.float32),trainable=trainable, name='biases')
         out = tf.nn.bias_add(conv, biases)
-        deconv2_2 = tf.nn.relu(tf.layers.batch_normalization(out,training=training,trainable=trainable), name='deconv2_2')
+        out = tf.layers.batch_normalization(out,training=training,trainable=trainable)
+        deconv2_2 = tf.nn.relu(out)
 
         tf.summary.histogram('weights', kernel)
         tf.summary.histogram('biases', biases)
@@ -371,7 +374,7 @@ def base_net(input_tensor, trainable=True, training=True):
         # V3 = tf.squeeze(tf.slice(deconv2_2,(0,0,0,2),(1,-1,-1,1)))
         # V4 = tf.squeeze(tf.slice(deconv2_2,(0,0,0,3),(1,-1,-1,1)))
         # V5 = tf.squeeze(tf.slice(deconv2_2,(0,0,0,4),(1,-1,-1,1)))
-        # V = tf.expand_dims(tf.stack([V1,V2,V3,V4,V5]),3) 
+        # V = tf.expand_dims(tf.stack([V1,V2,V3,V4,V5]),3)
         # tf.summary.image('deconv2_2',V,max_outputs = 5)
 
     deconv1_1 = unpool(deconv2_2,pool_parameters[-5])
@@ -384,7 +387,8 @@ def base_net(input_tensor, trainable=True, training=True):
         biases = tf.Variable(tf.constant(0.0, shape=[64], dtype=tf.float32),
                              trainable=trainable, name='biases')
         out = tf.nn.bias_add(conv, biases)
-        deconv1_2 = tf.nn.relu(tf.layers.batch_normalization(out,training=training,trainable=trainable), name='deconv1_2')
+        out = tf.layers.batch_normalization(out,training=training,trainable=trainable)
+        deconv1_2 = tf.nn.relu(out)
         tf.summary.histogram('weights', kernel)
         tf.summary.histogram('biases', biases)
     #pred_alpha_matte
@@ -398,6 +402,5 @@ def base_net(input_tensor, trainable=True, training=True):
         pred_mattes = tf.nn.sigmoid(out)
         tf.summary.histogram('weights', kernel)
         tf.summary.histogram('biases', biases)
-        
-    return pred_mattes, en_parameters
 
+    return pred_mattes, en_parameters
