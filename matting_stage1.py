@@ -80,9 +80,10 @@ def main(_):
 
     b_input = tf.concat([b_RGB,b_trimap],3)
     
-    pred_mattes, en_parameters = base_net(b_input, trainable=True, training=True)
-
-    ref_pred_mattes = refine_net(pred_mattes, b_RGB, trainable=False, training=True)
+    with tf.name_scope('part1') as scope:
+        pred_mattes, en_parameters = base_net(b_input, trainable=True, training=True)
+    with tf.name_scope('part2') as scope:
+        ref_pred_mattes = refine_net(pred_mattes, b_RGB, trainable=False, training=True)
 
     final_pred_mattes = tf.add(pred_mattes, ref_pred_mattes)
     

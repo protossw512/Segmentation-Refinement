@@ -11,7 +11,7 @@ import gc
 
 trimap_kernel = [val for val in range(7,20)]
 g_mean = np.array(([126.88,120.24,112.19])).reshape([1,1,3])
-sample_patch_size = np.array([320, 400, 480])
+sample_patch_size = np.array([320, 480, 640, 800])
 image_height = 320
 image_width = 320
 

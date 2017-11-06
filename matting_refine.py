@@ -79,17 +79,15 @@ def main(_):
     tf.summary.image('raw_RGBs',raw_RGBs,max_outputs = 4)
 
     b_input = tf.concat([b_RGB,b_trimap],3)
-    
-    pred_mattes, en_parameters = base_net(b_input, trainable=False, training=True)
-
     with tf.name_scope('part1') as scope:
+        pred_mattes, en_parameters = base_net(b_input, trainable=False, training=True)
+    with tf.name_scope('part2') as scope:
         ref_pred_mattes = refine_net(pred_mattes, b_RGB, trainable=True, training=True)
 
-    with tf.name_scope('part2') as scope:
-        final_pred_mattes = tf.add(pred_mattes, ref_pred_mattes)
+    final_pred_mattes = tf.add(pred_mattes, ref_pred_mattes)
     
-    tf.summary.image('ref_pred_mattes', ref_pred_mattes)
-    tf.summary.image('final_pred_mattes', final_pred_mattes)
+    tf.summary.image('ref_pred_mattes', ref_pred_mattes, max_outputs=4)
+    tf.summary.image('final_pred_mattes', final_pred_mattes, max_outputs=4)
     tf.add_to_collection("pred_mattes", pred_mattes)
     tf.add_to_collection("ref_pred_mattes", ref_pred_mattes)
     tf.add_to_collection("final_pred_mattes", final_pred_mattes)
@@ -164,7 +162,7 @@ def main(_):
     tf.summary.scalar('comp_loss',comp_loss)
     tf.summary.scalar('ref_loss', ref_loss)
     
-    total_loss = (alpha_loss + comp_loss) * 0.5 + ref_loss
+    total_loss = (alpha_loss + comp_loss + ref_loss) * 0.5
     tf.summary.scalar('total_loss',total_loss)
     global_step = tf.Variable(0,name='global_step',trainable=False)
 
@@ -180,8 +178,9 @@ def main(_):
     train_op = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(ref_loss,global_step = global_step)
 
     #saver = tf.train.Saver(tf.trainable_variables() , max_to_keep = 10)
-    saver = tf.train.Saver(max_to_keep = 10)
-
+    stage1_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='part1')
+    saver = tf.train.Saver(var_list=stage1_vars)
+    saver2 = tf.train.Saver(max_to_keep = 10)
     coord = tf.train.Coordinator()
     summary_op = tf.summary.merge_all()
     summary_writer = tf.summary.FileWriter(log_dir, tf.get_default_graph())
@@ -235,12 +234,12 @@ def main(_):
                     images_batch = load_data_adobe(batch_alpha_paths,batch_FG_paths,batch_BG_paths,batch_RGB_paths)
                 feed = {train_batch:images_batch}
                 train_start = timeit.default_timer()
-                _,ref_loss,summary_str,step= sess.run([train_op,ref_loss,summary_op,global_step],feed_dict = feed)
+                _,loss,summary_str,step= sess.run([train_op,ref_loss,summary_op,global_step],feed_dict = feed)
                 train_end = timeit.default_timer()
                 if step%FLAGS.save_ckpt_steps == 0:
-                    saver.export_meta_graph(FLAGS.save_meta_path)
+                    saver2.export_meta_graph(FLAGS.save_meta_path)
                     print('saving model......')
-                    saver.save(sess,FLAGS.save_ckpt_path + '/model.ckpt',global_step = global_step, write_meta_graph = True)
+                    saver2.save(sess,FLAGS.save_ckpt_path + '/model.ckpt',global_step = global_step, write_meta_graph = True)
 
                     print('test on validation data...')
                     #vali_diff = []
