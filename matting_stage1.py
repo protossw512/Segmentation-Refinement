@@ -96,9 +96,38 @@ def main(_):
     if FLAGS.dataset_name == 'DAVIS':
         if FLAGS.use_focal_loss:
             print 'using focal loss'
-            wl = tf.where(tf.logical_and(tf.greater(b_trimap,50), tf.less(b_trimap, 200)), tf.fill([train_batch_size,image_width,image_height,1],1.), tf.fill([train_batch_size,image_width,image_height,1], 0.1))
+            true_pos = tf.where(tf.logical_and(b_GTmatte > 0, pred_mattes > 0),
+                                tf.fill([train_batch_size, image_width, image_height, 1], 1.),
+                                tf.fill([train_batch_size, image_width, image_height, 1], 0.))
+            false_pos = tf.where(tf.logical_and(b_GTmatte == 0, pred_mattes > 0),
+                                tf.fill([train_batch_size, image_width, image_height, 1], 50.),
+                                tf.fill([train_batch_size, image_width, image_height, 1], 0.))
+            true_neg = tf.where(tf.logical_and(b_GTmatte = 0, pred_mattes = 0), 
+                                tf.fill([train_batch_size, image_width, image_height, 1], 0.001),
+                                tf.fill([train_batch_size, image_width, image_height, 1], 0.))
+            false_neg = tf.where(tf.logical_and(b_GTmatte > 0, pred_mattes = 0),
+                                tf.fill([train_batch_size, image_width, image_height, 1], 1.),
+                                tf.fill([train_batch_size, image_width, image_height, 1], 0.))
+            wl = tf.add_n([true_pos, false_pos, true_neg, false_neg])
+            #wl = tf.where(tf.logical_and(tf.greater(b_trimap,50), tf.less(b_trimap, 200)),
+            #                tf.fill([train_batch_size,image_width,image_height,1],1.),
+            #                tf.fill([train_batch_size,image_width,image_height,1], 0.1))
         else:
-            wl = tf.where(tf.logical_and(tf.greater(b_trimap,50), tf.less(b_trimap, 200)), tf.fill([train_batch_size,image_width,image_height,1],1.), tf.fill([train_batch_size,image_width,image_height,1], 0.1))
+            true_pos = tf.where(tf.logical_and(b_GTmatte > 0, pred_mattes > 0),
+                                tf.fill([train_batch_size, image_width, image_height, 1], 1.),
+                                tf.fill([train_batch_size, image_width, image_height, 1], 0.))
+            false_pos = tf.where(tf.logical_and(b_GTmatte == 0, pred_mattes > 0),
+                                tf.fill([train_batch_size, image_width, image_height, 1], 50.),
+                                tf.fill([train_batch_size, image_width, image_height, 1], 0.))
+            true_neg = tf.where(tf.logical_and(b_GTmatte = 0, pred_mattes = 0),
+                                tf.fill([train_batch_size, image_width, image_height, 1], 0.001),
+                                tf.fill([train_batch_size, image_width, image_height, 1], 0.))
+            false_neg = tf.where(tf.logical_and(b_GTmatte > 0, pred_mattes = 0),
+                                tf.fill([train_batch_size, image_width, image_height, 1], 1.),
+                                tf.fill([train_batch_size, image_width, image_height, 1], 0.))
+            #wl = tf.where(tf.logical_and(tf.greater(b_trimap,50), tf.less(b_trimap, 200)),
+            #                tf.fill([train_batch_size,image_width,image_height,1],1.),
+            #                tf.fill([train_batch_size,image_width,image_height,1], 0.1))
     else:
         if FLAGS.use_focal_loss:
             print 'using focal loss'
@@ -150,8 +179,8 @@ def main(_):
     	c_diff = tf.sqrt(tf.square(pred_RGB/255.0 - raw_RGBs/255.0) + 1e-12)
     else:
     	c_diff = tf.square(pred_RGB/255.0 - raw_RGBs/255.0) + 1e-12
-    alpha_loss = tf.reduce_sum(alpha_diff) / tf.reduce_sum(wl) / 2.
-    comp_loss = tf.reduce_sum(c_diff) / tf.reduce_sum(wl) / 2.
+    alpha_loss = tf.reduce_sum(alpha_diff*wl) / tf.reduce_sum(wl) / 2.
+    comp_loss = tf.reduce_sum(c_diff*wl) / tf.reduce_sum(wl) / 2.
     #ref_loss = tf.reduce_sum(ref_diff) / tf.reduce_sum(wl) / 2.
     #alpha_loss = tf.reduce_sum(alpha_diff * wl)/(tf.reduce_sum(wl))
     #comp_loss = tf.reduce_sum(c_diff * wl)/(tf.reduce_sum(wl))
