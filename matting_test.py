@@ -5,7 +5,7 @@ from matting import image_preprocessing,load_path,load_data,load_path_adobe,load
 import os
 from scipy import misc
 import timeit
-from net import base_net
+from net import *
 
 flags = tf.app.flags
 flags.DEFINE_string('alpha_path', None, 'Path to alpha files')
@@ -51,8 +51,13 @@ def main(_):
 
     b_input = tf.concat([b_RGB,b_trimap],3)
 
-    pred_mattes, en_parameters = base_net(b_input, trainable=False, training=True)
+    with tf.name_scope('part1') as scope:
+        pred_mattes, en_parameters = base_net(b_input, trainable=False, training=True)
+    with tf.name_scope('part2') as scope:
+        ref_pred_mattes = refine_net(pred_mattes, b_RGB, trainable=False, training=True)
 
+    final_pred_mattes = tf.add(pred_mattes, ref_pred_mattes)
+    
     tf.add_to_collection("pred_mattes", pred_mattes)
 
     

@@ -330,9 +330,9 @@ def load_single_image_DAVIS(alpha_path, trimap_path, FG_path, BG_path, RGB_path)
 	    fg = fg[row_start:row_end, col_start:col_end, :]
 	    bg = bg[row_start:row_end, col_start:col_end, :]
 	if alpha.shape[0] != image_height:
-	    alpha = np.expand_dims(misc.imresize(np.squeeze(alpha), (image_height,image_width)),2)
-	    trimap = np.expand_dims(misc.imresize(np.squeeze(trimap), (image_height,image_width)),2)
-	    rgb = misc.imresize(rgb, (image_height,image_width))
+	    alpha = np.expand_dims(misc.imresize(np.squeeze(alpha), (image_height,image_width), interp='nearest'),2)
+	    trimap = np.expand_dims(misc.imresize(np.squeeze(trimap), (image_height,image_width), interp='bicubic'),2)
+	    rgb = misc.imresize(rgb, (image_height,image_width), interp='bicubic')
 	    fg = misc.imresize(fg, (image_height,image_width))
 	    bg = misc.imresize(bg, (image_height,image_width))
 	batch_i = np.concatenate([alpha, trimap, rgb - g_mean, fg, bg, rgb],2)
