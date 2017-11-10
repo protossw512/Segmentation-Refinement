@@ -77,28 +77,32 @@ def main(_):
         global_step.assign(0).eval()
         print('Restoring finished')
         sess.graph.finalize()
-        if os.path.isdir(dataset_trimap):
-            trimap_files = os.listdir(dataset_trimap)
-        else:
-            trimap_files = dataset_trimap
-        for trimap_file in trimap_files:
-            trimap_path = os.path.join(dataset_trimap, trimap_file)
-            RGB_path = os.path.join(dataset_RGB, trimap_file[:-3]+'png')
-            trimap_img = misc.imread(trimap_path, 'L')
-            ori_shape = trimap_img.shape
-            trimap_img = np.expand_dims(np.expand_dims(misc.imresize(trimap_img.astype(np.uint8), [image_height, image_width], interp='nearest').astype(np.float32),2),0)
-            rgb_img = misc.imread(RGB_path)
-            rgb_img = np.expand_dims(misc.imresize(rgb_img.astype(np.uint8), [image_height, image_width]).astype(np.float32) - g_mean, 0)
-            image = np.concatenate([trimap_img, rgb_img], axis=3)
-            feed = {input_images:image}
-            train_start = timeit.default_timer()
-            pred_alpha, summary_str, step = sess.run([ref_pred_mattes,summary_op,global_step], feed_dict = feed)
-            summary_writer.add_summary(summary_str,global_step=step)
-            pred_alpha = np.squeeze(pred_alpha)
-            pred_alpha = misc.imresize(pred_alpha, ori_shape)
-            misc.imsave(os.path.join(FLAGS.pred_path, trimap_file), pred_alpha)
-            train_end = timeit.default_timer()
-            print ('global_step:%d, time:%f' % (step, train_end-train_start))
+        trimap_clips = os.listdir(dataset_trimap)
+        for trimap_clip in trimap_clips:
+            clip_objects = os.listdir(os.path.join(dataset_trimap,trimap_clip))
+            for clip_object in clip_objects:
+                trimap_images = os.listdir(os.path.join(dataset_trimap, trimap_clip, clip_object))
+                for trimap_image in trimap_images:
+                    trimap_path = os.path.join(dataset_trimap, trimap_clip, clip_object, trimap_image)
+                    RGB_path = os.path.join(dataset_RGB, trimap_clip, trimap_image[:-3]+'jpg')
+                    trimap_img = misc.imread(trimap_path, 'L')
+                    ori_shape = trimap_img.shape
+                    trimap_img = np.expand_dims(np.expand_dims(misc.imresize(trimap_img.astype(np.uint8), [image_height, image_width], interp='nearest').astype(np.float32),2),0)
+                    rgb_img = misc.imread(RGB_path)
+                    rgb_img = np.expand_dims(misc.imresize(rgb_img.astype(np.uint8), [image_height, image_width]).astype(np.float32) - g_mean, 0)
+                    image = np.concatenate([trimap_img, rgb_img], axis=3)
+                    feed = {input_images:image}
+                    train_start = timeit.default_timer()
+                    pred_alpha, summary_str, step = sess.run([ref_pred_mattes,summary_op,global_step], feed_dict = feed)
+                    summary_writer.add_summary(summary_str,global_step=step)
+                    pred_alpha = np.squeeze(pred_alpha)
+                    pred_alpha = misc.imresize(pred_alpha, ori_shape)
+                    save_path = os.path.join(FLAGS.pred_path, trimap_clip, clip_object, trimap_image)
+                    if not os.path.exists(os.path.join(FLAGS.pred_path, trimap_clip, clip_object)):
+                        os.makedirs(os.path.join(FLAGS.pred_path, trimap_clip, clip_object))
+                    misc.imsave(save_path, pred_alpha)
+                    train_end = timeit.default_timer()
+                    print ('trimap_path:%s, time:%f' % (trimap_path, train_end-train_start))
 
 if __name__ == '__main__':
     tf.app.run()
