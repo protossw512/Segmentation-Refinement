@@ -108,7 +108,7 @@ def main(_):
             #wl = tf.add_n([true_pos, false_pos, true_neg, false_neg])
             wl = tf.where(tf.logical_and(tf.greater(b_trimap,1), tf.less(b_trimap, 200)),
                             tf.fill([train_batch_size,image_width,image_height,1],1.),
-                            tf.fill([train_batch_size,image_width,image_height,1], 1.))
+                            tf.fill([train_batch_size,image_width,image_height,1], .5))
         else:
             true_pos = tf.where(tf.logical_and(tf.greater(b_GTmatte, 0.), tf.greater(pred_mattes, 0.01)),\
                                 tf.fill([train_batch_size, image_width, image_height, 1], 1.),\

@@ -82,16 +82,16 @@ def main(_):
     
     with tf.name_scope('part1') as scope:
         pred_mattes, en_parameters = base_net(b_input, trainable=True, training=True)
-    with tf.name_scope('part2') as scope:
-        ref_pred_mattes = refine_net(pred_mattes, b_RGB, trainable=False, training=True)
+    #with tf.name_scope('part2') as scope:
+    #    ref_pred_mattes = refine_net(pred_mattes, b_RGB, trainable=False, training=True)
 
-    final_pred_mattes = tf.add(pred_mattes, ref_pred_mattes, name='final_add')
+    #final_pred_mattes = tf.add(pred_mattes, ref_pred_mattes, name='final_add')
     
-    tf.summary.image('ref_pred_mattes', ref_pred_mattes)
+    #tf.summary.image('ref_pred_mattes', ref_pred_mattes)
     #tf.summary.image('final_pred_mattes', final_pred_mattes)
     tf.add_to_collection("pred_mattes", pred_mattes)
-    tf.add_to_collection("ref_pred_mattes", ref_pred_mattes)
-    tf.add_to_collection("final_pred_mattes", final_pred_mattes)
+    #tf.add_to_collection("ref_pred_mattes", ref_pred_mattes)
+    #tf.add_to_collection("final_pred_mattes", final_pred_mattes)
 
     if FLAGS.dataset_name == 'DAVIS':
         if FLAGS.use_focal_loss:
@@ -135,14 +135,14 @@ def main(_):
     else:
         if FLAGS.use_focal_loss:
             print 'using focal loss'
-            wl = tf.where(tf.equal(b_trimap,128), tf.fill([train_batch_size,image_width,image_height,1],.5), tf.fill([train_batch_size,image_width,image_height,1], 0.))
+            wl = tf.where(tf.equal(b_trimap,128), tf.fill([train_batch_size,image_width,image_height,1],1.), tf.fill([train_batch_size,image_width,image_height,1], 0.1))
         else:
-            wl = tf.where(tf.equal(b_trimap,128), tf.fill([train_batch_size,image_width,image_height,1],1.), tf.fill([train_batch_size,image_width,image_height,1], 0.))
+            wl = tf.where(tf.equal(b_trimap,128), tf.fill([train_batch_size,image_width,image_height,1],1.), tf.fill([train_batch_size,image_width,image_height,1], 0.1))
     tf.summary.image('pred_mattes',pred_mattes,max_outputs = 4)
     tf.summary.image('wl',wl,max_outputs = 4)
     #alpha_diff = tf.sqrt(tf.square(pred_mattes/255.0 - b_GTmatte/255.0,)  + 1e-12)
     if FLAGS.use_focal_loss:
-   	    alpha_diff = tf.square(pred_mattes - b_GTmatte/255.0,) + 1e-12
+   	alpha_diff = tf.square(pred_mattes - b_GTmatte/255.0,) + 1e-12
     else:
     	alpha_diff = tf.sqrt(tf.square(pred_mattes - b_GTmatte/255.0,) + 1e-12)
 
@@ -206,9 +206,10 @@ def main(_):
                                                 staircase=True,
                                                 name='exponential_decay_learning_rate')
     tf.summary.scalar('learning_rate',learning_rate)
-    #update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-    #with tf.control_dependencies(update_ops):
-    train_op = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(total_loss,global_step = global_step)
+    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+    print(tf.GraphKeys.UPDATE_OPS)
+    with tf.control_dependencies(update_ops):
+        train_op = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(total_loss,global_step = global_step)
 
     #saver = tf.train.Saver(tf.trainable_variables() , max_to_keep = 10)
     saver = tf.train.Saver(max_to_keep = 10)
