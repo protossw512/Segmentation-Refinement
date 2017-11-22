@@ -96,7 +96,7 @@ def main(_):
                     pred_alpha, summary_str, step = sess.run([ref_pred_mattes,summary_op,global_step], feed_dict = feed)
                     summary_writer.add_summary(summary_str,global_step=step)
                     pred_alpha = np.squeeze(pred_alpha)
-                    pred_alpha = misc.imresize(pred_alpha, ori_shape)
+                    pred_alpha = misc.imresize(pred_alpha, ori_shape, interp='nearest')
                     save_path = os.path.join(FLAGS.pred_path, trimap_clip, clip_object, trimap_image)
                     if not os.path.exists(os.path.join(FLAGS.pred_path, trimap_clip, clip_object)):
                         os.makedirs(os.path.join(FLAGS.pred_path, trimap_clip, clip_object))
