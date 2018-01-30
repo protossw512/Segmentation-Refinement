@@ -110,21 +110,21 @@ def main(_):
                             tf.fill([train_batch_size,image_width,image_height,1],1.),
                             tf.fill([train_batch_size,image_width,image_height,1], .5))
         else:
-            true_pos = tf.where(tf.logical_and(tf.greater(b_GTmatte, 0.), tf.greater(pred_mattes, 0.01)),\
-                                tf.fill([train_batch_size, image_width, image_height, 1], 1.),\
-                                tf.fill([train_batch_size, image_width, image_height, 1], 0.))
-            false_pos = tf.where(tf.logical_and(tf.equal(b_GTmatte, 0.), tf.greater(pred_mattes, 0.01)),\
-                                tf.fill([train_batch_size, image_width, image_height, 1], 10.),\
-                                tf.fill([train_batch_size, image_width, image_height, 1], 0.))
-            true_neg = tf.where(tf.logical_and(tf.equal(b_GTmatte, 0.), tf.less(pred_mattes, 0.01)),\
-                                tf.fill([train_batch_size, image_width, image_height, 1], 0.001),\
-                                tf.fill([train_batch_size, image_width, image_height, 1], 0.))
-            false_neg = tf.where(tf.logical_and(tf.greater(b_GTmatte, 0.), tf.less(pred_mattes, 0.01)),\
-                                tf.fill([train_batch_size, image_width, image_height, 1], 1.),\
-                                tf.fill([train_batch_size, image_width, image_height, 1], 0.))
-            #wl = tf.where(tf.logical_and(tf.greater(b_trimap,50), tf.less(b_trimap, 200)),
-            #                tf.fill([train_batch_size,image_width,image_height,1],1.),
-            #                tf.fill([train_batch_size,image_width,image_height,1], 0.1))
+           # true_pos = tf.where(tf.logical_and(tf.greater(b_GTmatte, 0.), tf.greater(pred_mattes, 0.01)),\
+           #                     tf.fill([train_batch_size, image_width, image_height, 1], 1.),\
+           #                     tf.fill([train_batch_size, image_width, image_height, 1], 0.))
+           # false_pos = tf.where(tf.logical_and(tf.equal(b_GTmatte, 0.), tf.greater(pred_mattes, 0.01)),\
+           #                     tf.fill([train_batch_size, image_width, image_height, 1], 10.),\
+           #                     tf.fill([train_batch_size, image_width, image_height, 1], 0.))
+           # true_neg = tf.where(tf.logical_and(tf.equal(b_GTmatte, 0.), tf.less(pred_mattes, 0.01)),\
+           #                     tf.fill([train_batch_size, image_width, image_height, 1], 0.001),\
+           #                     tf.fill([train_batch_size, image_width, image_height, 1], 0.))
+           # false_neg = tf.where(tf.logical_and(tf.greater(b_GTmatte, 0.), tf.less(pred_mattes, 0.01)),\
+           #                     tf.fill([train_batch_size, image_width, image_height, 1], 1.),\
+           #                     tf.fill([train_batch_size, image_width, image_height, 1], 0.))
+            wl = tf.where(tf.logical_and(tf.greater(b_trimap,50), tf.less(b_trimap, 200)),
+                            tf.fill([train_batch_size,image_width,image_height,1],1.),
+                            tf.fill([train_batch_size,image_width,image_height,1], 0.5))
         #tf.summary.image('tp',true_pos,max_outputs = 4)
         #tf.summary.image('fp',false_pos,max_outputs = 4)
         #tf.summary.image('tn',true_neg,max_outputs = 4)

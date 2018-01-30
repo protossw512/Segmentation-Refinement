@@ -161,7 +161,7 @@ def load_path(alphas, trimaps, RGBs):
     return np.array(alphas_abspath),np.array(trimaps_abspath),np.array(RGBs_abspath)
 
 def load_data(batch_alpha_paths,batch_trimap_paths,batch_rgb_paths):
-	
+	print(batch_trimap_pathbatch_trimap_pathss)
 	batch_size = batch_alpha_paths.shape[0]
 	train_batch = []
 	images_without_mean_reduction = []
@@ -346,7 +346,7 @@ def load_data_DAVIS(batch_alpha_paths,
                     batch_BG_paths,
                     batch_RGB_paths):
 	
-	batch_size = batch_alpha_paths.shape[0]
+        batch_size = batch_alpha_paths.shape[0]
 	train_batch = Parallel(n_jobs=8)(delayed(load_single_image_DAVIS)(batch_alpha_paths[i], \
 				batch_trimap_paths[i], batch_FG_paths[i], batch_BG_paths[i], batch_RGB_paths[i]) \
 				for i in range(batch_size))

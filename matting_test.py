@@ -86,6 +86,8 @@ def main(_):
                     trimap_path = os.path.join(dataset_trimap, trimap_clip, clip_object, trimap_image)
                     RGB_path = os.path.join(dataset_RGB, trimap_clip, trimap_image[:-3]+'jpg')
                     trimap_img = misc.imread(trimap_path, 'L')
+                    select = np.bitwise_and(trimap_img > 10, trimap_img < 200)
+                    trimap_img[select] += 50
                     ori_shape = trimap_img.shape
                     trimap_img = np.expand_dims(np.expand_dims(misc.imresize(trimap_img.astype(np.uint8), [image_height, image_width], interp='nearest').astype(np.float32),2),0)
                     rgb_img = misc.imread(RGB_path)
