@@ -5,7 +5,7 @@ from util import *
 import os
 from scipy import misc
 import timeit
-from net import base_net, refine_net
+from net import base_net, refine_net, refine_net_concat
 
 flags = tf.app.flags
 flags.DEFINE_string('alpha_path', None, 'Path to alpha files')
@@ -83,7 +83,7 @@ def main(_):
     with tf.name_scope('part1') as scope:
         pred_mattes, en_parameters = base_net(b_input, trainable=True, training=True)
     with tf.name_scope('part2') as scope:
-        ref_pred_mattes = refine_net(pred_mattes, b_RGB, trainable=True, training=True)
+        ref_pred_mattes = refine_net_concat(pred_mattes, b_RGB, b_trimap, trainable=True, training=True)
 
     tf.summary.image('ref_pred_mattes', ref_pred_mattes, max_outputs = 4)
     #tf.summary.image('final_pred_mattes', final_pred_mattes)

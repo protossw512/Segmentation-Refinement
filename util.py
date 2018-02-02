@@ -253,7 +253,7 @@ def load_single_image_adobe(alpha_path, FG_path, BG_path, RGB_path):
 	else:
 	    trimap = np.copy(alpha)
 	    trimap = generate_trimap(trimap, alpha)
-	batch_i = np.concatenate([alpha, trimap, rgb - g_mean, fg, bg, rgb],2)
+	batch_i = np.concatenate([alpha, trimap-128.0, rgb - g_mean, fg, bg, rgb],2)
 	batch_i = batch_i.astype(np.float32)
 	return batch_i
 
@@ -335,7 +335,7 @@ def load_single_image_DAVIS(alpha_path, trimap_path, FG_path, BG_path, RGB_path)
 	    rgb = misc.imresize(rgb, (image_height,image_width), interp='bicubic')
 	    fg = misc.imresize(fg, (image_height,image_width))
 	    bg = misc.imresize(bg, (image_height,image_width))
-	batch_i = np.concatenate([alpha, trimap, rgb - g_mean, fg, bg, rgb],2)
+	batch_i = np.concatenate([alpha, trimap-128.0, rgb - g_mean, fg, bg, rgb],2)
 	batch_i = batch_i.astype(np.float32)
 	return batch_i
 

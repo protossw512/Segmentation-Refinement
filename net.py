@@ -55,6 +55,60 @@ def refine_net(pred_mattes, b_RGB, trainable=True, training=True):
 
     return ref_pred_mattes
 
+
+def refine_net_concat(pred_mattes, b_RGB, b_trimap, trainable=True, training=True):
+    pred_mattes_scaled = tf.scalar_mul(255.0, pred_mattes)
+    b_input = tf.concat([b_RGB,b_trimap,pred_mattes_scaled],3)
+
+    with tf.name_scope('ref_conv1') as scope:
+        kernel = tf.Variable(tf.truncated_normal([3, 3, 5, 64], dtype=tf.float32,
+                             stddev=1e-1), name='weights', trainable=trainable)
+        conv = tf.nn.conv2d(b_input, kernel, [1, 1, 1, 1], padding='SAME')
+        biases = tf.Variable(tf.constant(0.0, shape=[64], dtype=tf.float32),
+                             trainable=trainable, name='biases')
+        out = tf.nn.bias_add(conv, biases)
+        out = tf.layers.batch_normalization(out, training=training, trainable=trainable)
+        ref_conv1 = tf.nn.relu(out)
+        tf.summary.histogram('weights', kernel)
+        tf.summary.histogram('biases', biases)
+
+    with tf.name_scope('ref_conv2') as scope:
+        kernel = tf.Variable(tf.truncated_normal([3, 3, 64, 64], dtype=tf.float32,
+                             stddev=1e-1), name='weights', trainable=trainable)
+        conv = tf.nn.conv2d(ref_conv1, kernel, [1, 1, 1, 1], padding='SAME')
+        biases = tf.Variable(tf.constant(0.0, shape=[64], dtype=tf.float32),
+                             trainable=trainable, name='biases')
+        out = tf.nn.bias_add(conv, biases)
+        out = tf.layers.batch_normalization(out, training=training, trainable=trainable)
+        ref_conv2 = tf.nn.relu(out)
+        tf.summary.histogram('weights', kernel)
+        tf.summary.histogram('biases', biases)
+
+    with tf.name_scope('ref_conv3') as scope:
+        kernel = tf.Variable(tf.truncated_normal([3, 3, 64, 64], dtype=tf.float32,
+                             stddev=1e-1), name='weights', trainable=trainable)
+        conv = tf.nn.conv2d(ref_conv2, kernel, [1, 1, 1, 1], padding='SAME')
+        biases = tf.Variable(tf.constant(0.0, shape=[64], dtype=tf.float32),
+                             trainable=trainable, name='biases')
+        out = tf.nn.bias_add(conv, biases)
+        out = tf.layers.batch_normalization(out, training=training, trainable=trainable)
+        ref_conv3 = tf.nn.relu(out)
+        tf.summary.histogram('weights', kernel)
+        tf.summary.histogram('biases', biases)
+
+    with tf.variable_scope('ref_pred_alpha') as scope:
+        kernel = tf.Variable(tf.truncated_normal([3, 3, 64, 1], dtype=tf.float32,
+                                                 stddev=1e-1), name='weights', trainable=trainable)
+        conv = tf.nn.conv2d(ref_conv3, kernel, [1, 1, 1, 1], padding='SAME')
+        biases = tf.Variable(tf.constant(0.0, shape=[1], dtype=tf.float32),
+                             trainable=trainable, name='biases')
+        out = tf.nn.bias_add(conv, biases)
+        ref_pred_mattes = tf.nn.sigmoid(out)
+        tf.summary.histogram('weights', kernel)
+        tf.summary.histogram('biases', biases)
+
+    return ref_pred_mattes
+
 def base_net(input_tensor, trainable=True, training=True):
     # conv1_1
     en_parameters = []
@@ -297,8 +351,8 @@ def base_net(input_tensor, trainable=True, training=True):
 
     #deconv5_2
     with tf.variable_scope('deconv5_2') as scope:
-        kernel = tf.Variable(tf.truncated_normal([5, 5, 512, 512], dtype=tf.float32,stddev=1e-1), name='weights', trainable=trainable)
-        conv = tf.nn.conv2d(deconv5_1, kernel, [1, 1, 1, 1], padding='SAME')
+        kernel = tf.Variable(tf.truncated_normal([5, 5, 1024, 512], dtype=tf.float32,stddev=1e-1), name='weights', trainable=trainable)
+        conv = tf.nn.conv2d(tf.concat([deconv5_1, conv5_3], 3), kernel, [1, 1, 1, 1], padding='SAME')
         biases = tf.Variable(tf.constant(0.0, shape=[512], dtype=tf.float32),trainable=trainable, name='biases')
         out = tf.nn.bias_add(conv, biases)
         out = tf.layers.batch_normalization(out,training=training,trainable=trainable)
@@ -318,8 +372,8 @@ def base_net(input_tensor, trainable=True, training=True):
 
     #deconv4_2
     with tf.variable_scope('deconv4_2') as scope:
-        kernel = tf.Variable(tf.truncated_normal([5, 5, 512, 256], dtype=tf.float32,stddev=1e-1), name='weights', trainable=trainable)
-        conv = tf.nn.conv2d(deconv4_1, kernel, [1, 1, 1, 1], padding='SAME')
+        kernel = tf.Variable(tf.truncated_normal([5, 5, 1024, 256], dtype=tf.float32,stddev=1e-1), name='weights', trainable=trainable)
+        conv = tf.nn.conv2d(tf.concat([deconv4_1,conv4_3],3), kernel, [1, 1, 1, 1], padding='SAME')
         biases = tf.Variable(tf.constant(0.0, shape=[256], dtype=tf.float32),trainable=trainable, name='biases')
         out = tf.nn.bias_add(conv, biases)
         out = tf.layers.batch_normalization(out,training=training,trainable=trainable)
@@ -339,8 +393,8 @@ def base_net(input_tensor, trainable=True, training=True):
 
     #deconv3_2
     with tf.variable_scope('deconv3_2') as scope:
-        kernel = tf.Variable(tf.truncated_normal([5, 5, 256, 128], dtype=tf.float32,stddev=1e-1), name='weights', trainable=trainable)
-        conv = tf.nn.conv2d(deconv3_1, kernel, [1, 1, 1, 1], padding='SAME')
+        kernel = tf.Variable(tf.truncated_normal([5, 5, 512, 128], dtype=tf.float32,stddev=1e-1), name='weights', trainable=trainable)
+        conv = tf.nn.conv2d(tf.concat([deconv3_1,conv3_3],3), kernel, [1, 1, 1, 1], padding='SAME')
         biases = tf.Variable(tf.constant(0.0, shape=[128], dtype=tf.float32),trainable=trainable, name='biases')
         out = tf.nn.bias_add(conv, biases)
         out = tf.layers.batch_normalization(out,training=training,trainable=trainable)
@@ -360,8 +414,8 @@ def base_net(input_tensor, trainable=True, training=True):
 
     #deconv2_2
     with tf.variable_scope('deconv2_2') as scope:
-        kernel = tf.Variable(tf.truncated_normal([5, 5, 128, 64], dtype=tf.float32,stddev=1e-1), name='weights', trainable=trainable)
-        conv = tf.nn.conv2d(deconv2_1, kernel, [1, 1, 1, 1], padding='SAME')
+        kernel = tf.Variable(tf.truncated_normal([5, 5, 256, 64], dtype=tf.float32,stddev=1e-1), name='weights', trainable=trainable)
+        conv = tf.nn.conv2d(tf.concat([deconv2_1,conv2_2],3), kernel, [1, 1, 1, 1], padding='SAME')
         biases = tf.Variable(tf.constant(0.0, shape=[64], dtype=tf.float32),trainable=trainable, name='biases')
         out = tf.nn.bias_add(conv, biases)
         out = tf.layers.batch_normalization(out,training=training,trainable=trainable)
@@ -381,9 +435,9 @@ def base_net(input_tensor, trainable=True, training=True):
 
     #deconv1_2
     with tf.variable_scope('deconv1_2') as scope:
-        kernel = tf.Variable(tf.truncated_normal([5, 5, 64, 64], dtype=tf.float32,
+        kernel = tf.Variable(tf.truncated_normal([5, 5, 128, 64], dtype=tf.float32,
                                                  stddev=1e-1), name='weights', trainable=trainable)
-        conv = tf.nn.conv2d(deconv1_1, kernel, [1, 1, 1, 1], padding='SAME')
+        conv = tf.nn.conv2d(tf.concat([deconv1_1,conv1_2],3), kernel, [1, 1, 1, 1], padding='SAME')
         biases = tf.Variable(tf.constant(0.0, shape=[64], dtype=tf.float32),
                              trainable=trainable, name='biases')
         out = tf.nn.bias_add(conv, biases)

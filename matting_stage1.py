@@ -109,25 +109,25 @@ def main(_):
             #                    tf.fill([train_batch_size, image_width, image_height, 1], 1.),\
             #                    tf.fill([train_batch_size, image_width, image_height, 1], 0.))
             #wl = tf.add_n([true_pos, false_pos, true_neg, false_neg])
-            wl = tf.where(tf.logical_and(tf.greater(b_trimap,5), tf.less(b_trimap, 250)),
+            wl = tf.where(tf.logical_and(tf.greater((b_trimap+128.0),5), tf.less((b_trimap+128.0), 250)),
                             tf.fill([train_batch_size,image_width,image_height,1],1.),
                             tf.fill([train_batch_size,image_width,image_height,1], 0.2))
         else:
-            true_pos = tf.where(tf.logical_and(tf.greater(b_GTmatte, 0.), tf.greater(pred_mattes, 0.01)),\
-                                tf.fill([train_batch_size, image_width, image_height, 1], 1.),\
-                                tf.fill([train_batch_size, image_width, image_height, 1], 0.))
-            false_pos = tf.where(tf.logical_and(tf.equal(b_GTmatte, 0.), tf.greater(pred_mattes, 0.01)),\
-                                tf.fill([train_batch_size, image_width, image_height, 1], 10.),\
-                                tf.fill([train_batch_size, image_width, image_height, 1], 0.))
-            true_neg = tf.where(tf.logical_and(tf.equal(b_GTmatte, 0.), tf.less(pred_mattes, 0.01)),\
-                                tf.fill([train_batch_size, image_width, image_height, 1], 0.001),\
-                                tf.fill([train_batch_size, image_width, image_height, 1], 0.))
-            false_neg = tf.where(tf.logical_and(tf.greater(b_GTmatte, 0.), tf.less(pred_mattes, 0.01)),\
-                                tf.fill([train_batch_size, image_width, image_height, 1], 1.),\
-                                tf.fill([train_batch_size, image_width, image_height, 1], 0.))
-            #wl = tf.where(tf.logical_and(tf.greater(b_trimap,50), tf.less(b_trimap, 200)),
-            #                tf.fill([train_batch_size,image_width,image_height,1],1.),
-            #                tf.fill([train_batch_size,image_width,image_height,1], 0.1))
+            #true_pos = tf.where(tf.logical_and(tf.greater(b_GTmatte, 0.), tf.greater(pred_mattes, 0.01)),\
+            #                    tf.fill([train_batch_size, image_width, image_height, 1], 1.),\
+            #                    tf.fill([train_batch_size, image_width, image_height, 1], 0.))
+            #false_pos = tf.where(tf.logical_and(tf.equal(b_GTmatte, 0.), tf.greater(pred_mattes, 0.01)),\
+            #                    tf.fill([train_batch_size, image_width, image_height, 1], 10.),\
+            #                    tf.fill([train_batch_size, image_width, image_height, 1], 0.))
+            #true_neg = tf.where(tf.logical_and(tf.equal(b_GTmatte, 0.), tf.less(pred_mattes, 0.01)),\
+            #                    tf.fill([train_batch_size, image_width, image_height, 1], 0.001),\
+            #                    tf.fill([train_batch_size, image_width, image_height, 1], 0.))
+            #false_neg = tf.where(tf.logical_and(tf.greater(b_GTmatte, 0.), tf.less(pred_mattes, 0.01)),\
+            #                    tf.fill([train_batch_size, image_width, image_height, 1], 1.),\
+            #                    tf.fill([train_batch_size, image_width, image_height, 1], 0.))
+            wl = tf.where(tf.logical_and(tf.greater((b_trimap+128.0),50), tf.less((b_trimap+128.0), 200)),
+                            tf.fill([train_batch_size,image_width,image_height,1],1.),
+                            tf.fill([train_batch_size,image_width,image_height,1], 0.1))
         #tf.summary.image('tp',true_pos,max_outputs = 4)
         #tf.summary.image('fp',false_pos,max_outputs = 4)
         #tf.summary.image('tn',true_neg,max_outputs = 4)
@@ -135,14 +135,14 @@ def main(_):
     else:
         if FLAGS.use_focal_loss:
             print 'using focal loss'
-            wl = tf.where(tf.equal(b_trimap,128), tf.fill([train_batch_size,image_width,image_height,1],1.), tf.fill([train_batch_size,image_width,image_height,1], 0.1))
+            wl = tf.where(tf.equal(b_trimap,0), tf.fill([train_batch_size,image_width,image_height,1],1.), tf.fill([train_batch_size,image_width,image_height,1], 0.1))
         else:
-            wl = tf.where(tf.equal(b_trimap,128), tf.fill([train_batch_size,image_width,image_height,1],1.), tf.fill([train_batch_size,image_width,image_height,1], 0.1))
+            wl = tf.where(tf.equal(b_trimap,0), tf.fill([train_batch_size,image_width,image_height,1],1.), tf.fill([train_batch_size,image_width,image_height,1], 0.1))
     tf.summary.image('pred_mattes',pred_mattes,max_outputs = 4)
     tf.summary.image('wl',wl,max_outputs = 4)
     #alpha_diff = tf.sqrt(tf.square(pred_mattes/255.0 - b_GTmatte/255.0,)  + 1e-12)
     if FLAGS.use_focal_loss:
-   	alpha_diff = tf.square(pred_mattes - b_GTmatte/255.0,) + 1e-12
+   	alpha_diff = tf.square(pred_mattes - b_GTmatte/255.0,)# + 1e-12
     else:
     	alpha_diff = tf.sqrt(tf.square(pred_mattes - b_GTmatte/255.0,) + 1e-12)
 
@@ -179,7 +179,7 @@ def main(_):
     # changed 201709
     #c_diff = tf.sqrt(tf.square(pred_RGB/255.0 - raw_RGBs/255.0) + 1e-12)
     if FLAGS.use_focal_loss:
-    	c_diff = tf.square(pred_RGB/255.0 - raw_RGBs/255.0) + 1e-12
+    	c_diff = tf.square(pred_RGB/255.0 - raw_RGBs/255.0)# + 1e-12
     else:
     	c_diff = tf.sqrt(tf.square(pred_RGB/255.0 - raw_RGBs/255.0) + 1e-12)
     alpha_loss = tf.reduce_sum(alpha_diff*wl) / tf.reduce_sum(wl) / 2.
@@ -195,7 +195,7 @@ def main(_):
     tf.summary.scalar('comp_loss',comp_loss)
     #tf.summary.scalar('ref_loss', ref_loss)
     
-    total_loss = (alpha_loss + comp_loss) * 0.5
+    total_loss = (alpha_loss + comp_loss)# * 0.5
     tf.summary.scalar('total_loss',total_loss)
     global_step = tf.Variable(0,name='global_step',trainable=False)
 
