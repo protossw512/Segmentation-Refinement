@@ -264,7 +264,7 @@ def load_data_adobe(batch_alpha_paths,
                     batch_RGB_paths):
 
     batch_size = batch_alpha_paths.shape[0]
-    train_batch = Parallel(n_jobs=8)(delayed(load_single_image_adobe)(batch_alpha_paths[i], \
+    train_batch = Parallel(n_jobs=4)(delayed(load_single_image_adobe)(batch_alpha_paths[i], \
                 batch_FG_paths[i], batch_BG_paths[i], batch_RGB_paths[i]) \
                 for i in range(batch_size))
     train_batch = np.stack(train_batch)
@@ -287,7 +287,8 @@ def load_path_queue(alphas):
     '''
     return os.listdir(alphas)
 
-def input_parser(image_name):
+def input_parser(image_name, dataset_alpha, dataset_trimap, 
+                 dataset_RGB, dataset_fg, dataset_bg):
     alpha_path = os.path.join(dataset_alpha, image_name)
     trimap_path = os.path.join(dataset_trimap, image_name)
     FG_path = os.path.join(dataset_fg, image_name)
@@ -375,7 +376,7 @@ def load_data_DAVIS(batch_alpha_paths,
                     batch_RGB_paths):
 
         batch_size = batch_alpha_paths.shape[0]
-        train_batch = Parallel(n_jobs=8)(delayed(load_single_image_DAVIS)(batch_alpha_paths[i], \
+        train_batch = Parallel(n_jobs=4)(delayed(load_single_image_DAVIS)(batch_alpha_paths[i], \
                 batch_trimap_paths[i], batch_FG_paths[i], batch_BG_paths[i], batch_RGB_paths[i]) \
                 for i in range(batch_size))
         train_batch = np.stack(train_batch)

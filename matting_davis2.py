@@ -6,7 +6,8 @@ import os
 from scipy import misc
 import timeit
 from net import base_net, refine_net, refine_net_concat
-from tensorflow.data import Dataset, Iterator
+Dataset = tf.data.Dataset
+Iterator = tf.data.Iterator
 
 flags = tf.app.flags
 flags.DEFINE_string('alpha_path', None, 'Path to alpha files')
@@ -55,13 +56,14 @@ def main(_):
 
     image_paths = load_path_queue(dataset_alpha)
 
-    range_size = len(paths_alpha)
+    range_size = len(image_paths)
     print('range_size is %d' % range_size)
     #range_size/batch_size has to be int
     batchs_per_epoch = int(range_size/train_batch_size)
 
     train_data = Dataset.from_tensor_slices(image_paths)
-    train_data = train_data.map(input_parser)
+    train_data = train_data.map(lambda x: input_parser(x, dataset_alpha, dataset_trimap,
+                                                        dataset_RGB, dataset_fg, dataset_bg))
     train_data = train_data.shuffle(buffer_size=1)
     train_data = train_data.batch(train_batch_size)
     train_data = train_data.repeat(num_epochs)
