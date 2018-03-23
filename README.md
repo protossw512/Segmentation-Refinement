@@ -6,4 +6,4 @@ Deep Image Matting (CVPR 2017) [link](https://arxiv.org/abs/1703.03872)
 
 The second part is trying to use similar atchtecture to refine video segmentation results from DAVIS video segmentation dataset.
 
-Sample scripts can be found in '''./scripts'''
+Sample scripts can be found in './scripts'
